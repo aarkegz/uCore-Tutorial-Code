@@ -65,8 +65,11 @@ struct proc *allocproc();
 int fdalloc(struct file *);
 int init_stdio(struct proc *);
 int push_argv(struct proc *, char **);
+void freepid(int pid);
 // swtch.S
 void swtch(struct context *, struct context *);
+
+extern struct proc *init_proc;
 
 int growproc(int n);
 

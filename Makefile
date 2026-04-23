@@ -1,6 +1,8 @@
 .PHONY: clean build user run debug test .FORCE
 all: build
 
+LOG ?= TRACE
+
 K = os
 U = user
 F = nfs
