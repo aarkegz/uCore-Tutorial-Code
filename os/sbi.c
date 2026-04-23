@@ -59,7 +59,7 @@ static void exit_code(uint32 code)
 
 void shutdown()
 {
-	exit_code(EXIT_SUCCESS);
+	exit_failure();
 }
 
 void exit_success()
