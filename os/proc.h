@@ -63,8 +63,11 @@ void add_task(struct proc *);
 struct proc *pop_task();
 struct proc *allocproc();
 int fdalloc(struct file *);
+void freepid(int pid);
 // swtch.S
 void swtch(struct context *, struct context *);
+
+extern struct proc *init_proc;
 
 int growproc(int n);
 

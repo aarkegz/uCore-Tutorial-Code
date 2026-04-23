@@ -99,6 +99,7 @@ int load_init_app()
 	}
 	debugf("load init proc %s", INIT_PROC);
 	loader(id, p);
+	init_proc = p;
 	add_task(p);
 	// Memory fence about fetching the instruction memory.
 	// It is guaranteed that a subsequent instruction fetch must

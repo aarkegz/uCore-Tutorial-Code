@@ -184,6 +184,9 @@ void syscall()
 	case SYS_spawn:
 		ret = sys_spawn(args[0]);
 		break;
+	case SYS_setpriority:
+		ret = sys_set_priority(args[0]);
+		break;
 	case SYS_sbrk:
 		ret = sys_sbrk(args[0]);
 		break;
