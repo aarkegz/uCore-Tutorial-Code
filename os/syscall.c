@@ -71,8 +71,20 @@ uint64 sys_munmap(uint64 start, uint64 len)
 */
 uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
 {
-	// TODO: implement sys_trace (LAB1)
-	return -1;
+	struct proc *p = curr_proc();
+	switch (trace_request) {
+	case 0: // read byte at address id
+		return *(uint8 *)id;
+	case 1: // write byte data to address id
+		*(uint8 *)id = (uint8)data;
+		return 0;
+	case 2: // query syscall count for syscall id
+		if (id >= 500)
+			return -1;
+		return p->syscall_count[id];
+	default:
+		return -1;
+	}
 }
 
 extern char trap_page[];
@@ -88,6 +100,8 @@ void syscall()
 	/*
 	* LAB1: you may need to update syscall counter here
 	*/
+	if (id >= 0 && id < 500)
+		curr_proc()->syscall_count[id]++;
 	switch (id) {
 	case SYS_write:
 		ret = sys_write(args[0], args[1], args[2]);

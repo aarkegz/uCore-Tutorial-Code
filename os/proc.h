@@ -40,6 +40,7 @@ struct proc {
 	uint64 max_page;
 	uint64 program_brk;
 	uint64 heap_bottom;
+	uint64 syscall_count[500]; // syscall invocation counters for sys_trace
 	/*
 	* LAB1: you may need to add some new fields here
 	*/
