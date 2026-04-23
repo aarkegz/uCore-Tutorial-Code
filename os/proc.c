@@ -5,8 +5,9 @@
 #include "vm.h"
 
 struct proc pool[NPROC];
-__attribute__((aligned(16))) char kstack[NPROC][PAGE_SIZE];
-__attribute__((aligned(4096))) char trapframe[NPROC][TRAP_PAGE_SIZE];
+char kstack[NPROC][PAGE_SIZE * 2];
+__attribute__((aligned(4096))) char ustack[NPROC][PAGE_SIZE];
+__attribute__((aligned(4096))) char trapframe[NPROC][PAGE_SIZE];
 
 extern char boot_stack_top[];
 struct proc *current_proc;
@@ -67,10 +68,10 @@ found:
 	p->program_brk = 0;
         p->heap_bottom = 0;
 	memset(&p->context, 0, sizeof(p->context));
-	memset((void *)p->kstack, 0, KSTACK_SIZE);
-	memset((void *)p->trapframe, 0, TRAP_PAGE_SIZE);
+	memset(p->trapframe, 0, PAGE_SIZE);
+	memset((void *)p->kstack, 0, PAGE_SIZE * 2);
 	p->context.ra = (uint64)usertrapret;
-	p->context.sp = p->kstack + KSTACK_SIZE;
+	p->context.sp = p->kstack + PAGE_SIZE * 2;
 	return p;
 }
 
