@@ -20,6 +20,7 @@ SECTIONS
         *(.text.entry)
         *(.text .text.*)
         . = ALIGN(0x1000);
+        strampoline = .;
         *(trampsec)
         . = ALIGN(0x1000);
     }

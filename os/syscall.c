@@ -33,18 +33,10 @@ uint64 sys_sched_yield()
 	return 0;
 }
 
-uint64 sys_gettimeofday(TimeVal *val, int _tz) // TODO: implement sys_gettimeofday in pagetable. (VA to PA)
+uint64 sys_gettimeofday(TimeVal *val, int _tz)
 {
-	// YOUR CODE
-	val->sec = 0;
-	val->usec = 0;
-
-	/* The code in `ch3` will leads to memory bugs*/
-
-	// uint64 cycle = get_cycle();
-	// val->sec = cycle / CPU_FREQ;
-	// val->usec = (cycle % CPU_FREQ) * 1000000 / CPU_FREQ;
-	return 0;
+	// TODO: implement sys_gettimeofday with copyout (LAB1)
+	return -1;
 }
 
 uint64 sys_sbrk(int n)
@@ -59,12 +51,29 @@ uint64 sys_sbrk(int n)
 
 
 
-// TODO: add support for mmap and munmap syscall.
+// TODO: add support for mmap and munmap syscall. (LAB1)
 // hint: read through docstrings in vm.c. Watching CH4 video may also help.
 // Note the return value and PTE flags (especially U,X,W,R)
+uint64 sys_mmap(uint64 start, uint64 len, uint64 port)
+{
+	// TODO: implement sys_mmap (LAB1)
+	return -1;
+}
+
+uint64 sys_munmap(uint64 start, uint64 len)
+{
+	// TODO: implement sys_munmap (LAB1)
+	return -1;
+}
+
 /*
 * LAB1: you may need to define sys_trace here
 */
+uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
+{
+	// TODO: implement sys_trace (LAB1)
+	return -1;
+}
 
 extern char trap_page[];
 
@@ -95,9 +104,18 @@ void syscall()
 	case SYS_sbrk:
 		ret = sys_sbrk(args[0]);
 		break;
+	case SYS_mmap:
+		ret = sys_mmap(args[0], args[1], args[2]);
+		break;
+	case SYS_munmap:
+		ret = sys_munmap(args[0], args[1]);
+		break;
 	/*
 	* LAB1: you may need to add SYS_trace case here
 	*/
+	case SYS_trace:
+		ret = sys_trace(args[0], args[1], args[2]);
+		break;
 	default:
 		ret = -1;
 		errorf("unknown syscall %d", id);
