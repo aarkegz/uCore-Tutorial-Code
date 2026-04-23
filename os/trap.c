@@ -2,6 +2,7 @@
 #include "defs.h"
 #include "loader.h"
 #include "plic.h"
+#include "signal.h"
 #include "syscall.h"
 #include "timer.h"
 #include "virtio.h"
@@ -95,16 +96,23 @@ void usertrap()
 			errorf("%d in application, bad addr = %p, bad instruction = %p, "
 			       "core dumped.",
 			       cause, r_stval(), trapframe->epc);
-			exit(-2);
+			current_add_signal(SIGSEGV);
 			break;
 		case IllegalInstruction:
 			errorf("IllegalInstruction in application, core dumped.");
-			exit(-3);
+			current_add_signal(SIGILL);
 			break;
 		default:
 			unknown_trap();
 			break;
 		}
+	}
+	/* Handle signals (handle the sent signal) */
+	handle_signals();
+	/* Check error signals (if error then exit) */
+	int err = check_signals_error_of_current();
+	if (err) {
+		exit(err);
 	}
 	usertrapret();
 }

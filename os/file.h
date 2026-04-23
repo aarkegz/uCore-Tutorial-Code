@@ -8,6 +8,20 @@
 #define PIPESIZE (512)
 #define FILEPOOLSIZE (NPROC * FD_BUFFER_SIZE)
 
+/* File mode (matches rCore's StatMode) */
+#define STAT_MODE_NULL 0
+#define STAT_MODE_DIR  0040000
+#define STAT_MODE_FILE 0100000
+
+/* File status structure (matches rCore's Stat) */
+struct Stat {
+	uint64 dev; /* ID of device containing file */
+	uint64 ino; /* Inode number */
+	uint32 mode; /* File type and mode (StatMode) */
+	uint32 nlink; /* Number of hard links */
+	uint64 pad[7]; /* Unused padding */
+};
+
 // in-memory copy of an inode,it can be used to quickly locate file entities on disk
 struct inode {
 	uint dev; // Device number

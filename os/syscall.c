@@ -2,6 +2,7 @@
 #include "console.h"
 #include "defs.h"
 #include "loader.h"
+#include "signal.h"
 #include "syscall_ids.h"
 #include "timer.h"
 #include "trap.h"
@@ -190,6 +191,31 @@ err0:
 	return -1;
 }
 
+uint64 sys_dup(int fd)
+{
+	if (fd < 0 || fd >= FD_BUFFER_SIZE)
+		return -1;
+	struct proc *p = curr_proc();
+	struct file *f = p->files[fd];
+	if (f == NULL) {
+		return -1;
+	}
+	/* Find the smallest available fd and duplicate the file */
+	int new_fd = -1;
+	for (int i = 0; i < FD_BUFFER_SIZE; i++) {
+		if (p->files[i] == NULL) {
+			new_fd = i;
+			break;
+		}
+	}
+	if (new_fd < 0) {
+		return -1;
+	}
+	f->ref++;
+	p->files[new_fd] = f;
+	return new_fd;
+}
+
 uint64 sys_openat(uint64 va, uint64 omode, uint64 _flags)
 {
 	struct proc *p = curr_proc();
@@ -225,7 +251,7 @@ uint64 sys_sbrk(int n)
 
 int sys_fstat(int fd, uint64 stat)
 {
-	//TODO: your job is to complete the syscall
+	/* Not fully implemented, return -1 as rCore does */
 	return -1;
 }
 
@@ -268,6 +294,74 @@ uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
 
 
 extern char trap_page[];
+
+uint64 sys_kill(int pid, int signum)
+{
+	struct proc *p = pid2proc(pid);
+	if (p == NULL) {
+		return -1;
+	}
+	if (signum < 0 || signum > MAX_SIG) {
+		return -1;
+	}
+	uint32 signal = 1U << signum;
+	if (p->signals & signal) {
+		return -1;
+	}
+	p->signals |= signal;
+	return 0;
+}
+
+uint64 sys_sigprocmask(uint32 mask)
+{
+	struct proc *p = curr_proc();
+	uint32 old_mask = p->signal_mask;
+	p->signal_mask = mask;
+	return old_mask;
+}
+
+uint64 sys_sigreturn(void)
+{
+	struct proc *p = curr_proc();
+	p->handling_sig = -1;
+	/* Restore the trap context from backup */
+	if (p->trap_ctx_backup) {
+		*p->trapframe = *p->trap_ctx_backup;
+	}
+	/* Return the value of a0 in the trap context */
+	return p->trapframe->a0;
+}
+
+static int check_sigaction_error(uint32 signal, uint64 action, uint64 old_action)
+{
+	if (action == 0 || old_action == 0 || signal == SIGKILL ||
+	    signal == SIGSTOP) {
+		return 1;
+	}
+	return 0;
+}
+
+uint64 sys_sigaction(int signum, uint64 action, uint64 old_action)
+{
+	struct proc *p = curr_proc();
+	if (signum < 0 || signum > MAX_SIG) {
+		return -1;
+	}
+	uint32 signal = 1U << signum;
+	if (check_sigaction_error(signal, action, old_action)) {
+		return -1;
+	}
+	/* Save old action to user space */
+	struct SignalAction prev = p->signal_actions.table[signum];
+	copyout(p->pagetable, old_action, (char *)&prev,
+		sizeof(struct SignalAction));
+	/* Read new action from user space */
+	struct SignalAction new_action;
+	copyin(p->pagetable, (char *)&new_action, action,
+	       sizeof(struct SignalAction));
+	p->signal_actions.table[signum] = new_action;
+	return 0;
+}
 
 void syscall()
 {
@@ -317,6 +411,9 @@ void syscall()
 	case SYS_pipe2:
 		ret = sys_pipe(args[0]);
 		break;
+	case SYS_dup:
+		ret = sys_dup(args[0]);
+		break;
 	case SYS_fstat:
 		ret = sys_fstat(args[0], args[1]);
 		break;
@@ -325,6 +422,19 @@ void syscall()
 		break;
 	case SYS_unlinkat:
 		ret = sys_unlinkat(args[0], args[1], args[2]);
+		break;
+	case SYS_kill:
+		ret = sys_kill(args[0], args[1]);
+		break;
+	case SYS_rt_sigaction:
+		ret = sys_sigaction(args[0], args[1], args[2]);
+		break;
+	case SYS_rt_sigprocmask:
+		ret = sys_sigprocmask(args[0]);
+		break;
+	case SYS_rt_sigreturn:
+		ret = sys_sigreturn();
+		break;
 	case SYS_spawn:
 		ret = sys_spawn(args[0]);
 		break;

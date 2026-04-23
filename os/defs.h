@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "riscv.h"
 #include "sbi.h"
+#include "signal.h"
 #include "string.h"
 #include "types.h"
 #include "vm.h"

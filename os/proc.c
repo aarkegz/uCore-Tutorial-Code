@@ -112,6 +112,14 @@ found:
 	memset((void *)p->kstack, 0, PAGE_SIZE * 2);
 	memset(p->trapframe, 0, PAGE_SIZE);
 	memset((void *)p->files, 0, sizeof(struct file *) * FD_BUFFER_SIZE);
+	/* Initialize signal fields */
+	p->signals = 0;
+	p->signal_mask = 0;
+	p->handling_sig = -1;
+	signal_actions_init(&p->signal_actions);
+	p->killed = 0;
+	p->frozen = 0;
+	p->trap_ctx_backup = NULL;
 	p->context.ra = (uint64)usertrapret;
 	p->context.sp = p->kstack + PAGE_SIZE * 2;
 	return p;
@@ -198,10 +206,14 @@ void freeproc(struct proc *p)
 	if (p->pagetable)
 		freepagetable(p->pagetable, p->max_page);
 	p->pagetable = 0;
-	for (int i = 0; i > FD_BUFFER_SIZE; i++) {
+	for (int i = 0; i < FD_BUFFER_SIZE; i++) {
 		if (p->files[i] != NULL) {
 			fileclose(p->files[i]);
 		}
+	}
+	if (p->trap_ctx_backup) {
+		kfree((char *)p->trap_ctx_backup);
+		p->trap_ctx_backup = NULL;
 	}
 	p->state = UNUSED;
 }
@@ -233,6 +245,9 @@ int fork()
 	// Cause fork to return 0 in the child.
 	np->trapframe->a0 = 0;
 	np->parent = p;
+	/* Inherit signal_mask and signal_actions */
+	np->signal_mask = p->signal_mask;
+	np->signal_actions = p->signal_actions;
 	np->state = RUNNABLE;
 	add_task(np);
 	return np->pid;
@@ -358,6 +373,18 @@ int fdalloc(struct file *f)
 	}
 	return -1;
 }
+
+struct proc *pid2proc(int pid)
+{
+	struct proc *p;
+	for (p = pool; p < &pool[NPROC]; p++) {
+		if (p->state != UNUSED && p->pid == pid) {
+			return p;
+		}
+	}
+	return NULL;
+}
+
 // Grow or shrink user memory by n bytes.
 // Return 0 on succness, -1 on failure.
 int growproc(int n)

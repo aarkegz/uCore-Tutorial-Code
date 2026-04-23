@@ -2,6 +2,7 @@
 #define PROC_H
 
 #include "riscv.h"
+#include "signal.h"
 #include "types.h"
 
 #define NPROC (512)
@@ -47,6 +48,14 @@ struct proc {
 		[FD_BUFFER_SIZE]; //File descriptor table, using to record the files opened by the process
 	uint64 program_brk;
 	uint64 heap_bottom;
+	/* Signal handling (ch7) */
+	uint32 signals;
+	uint32 signal_mask;
+	int handling_sig; /* Currently handling signal, -1 if none */
+	struct SignalActions signal_actions;
+	int killed; /* Whether the task has been killed */
+	int frozen; /* Whether the task is frozen by signal */
+	struct trapframe *trap_ctx_backup; /* Backup trap context for signal handling */
 };
 
 int cpuid();
@@ -66,6 +75,7 @@ int fdalloc(struct file *);
 int init_stdio(struct proc *);
 int push_argv(struct proc *, char **);
 void freepid(int pid);
+struct proc *pid2proc(int pid);
 // swtch.S
 void swtch(struct context *, struct context *);
 
