@@ -1,7 +1,7 @@
 .PHONY: clean build user
 all: build_kernel
 
-LOG ?= error
+LOG ?= TRACE
 
 K = os
 U = user
@@ -37,7 +37,17 @@ CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I$K
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 
-ifeq ($(LOG), error)
+ifeq ($(LOG), ERROR)
+CFLAGS += -D LOG_LEVEL_ERROR
+else ifeq ($(LOG), WARN)
+CFLAGS += -D LOG_LEVEL_WARN
+else ifeq ($(LOG), INFO)
+CFLAGS += -D LOG_LEVEL_INFO
+else ifeq ($(LOG), DEBUG)
+CFLAGS += -D LOG_LEVEL_DEBUG
+else ifeq ($(LOG), TRACE)
+CFLAGS += -D LOG_LEVEL_TRACE
+else ifeq ($(LOG), error)
 CFLAGS += -D LOG_LEVEL_ERROR
 else ifeq ($(LOG), warn)
 CFLAGS += -D LOG_LEVEL_WARN

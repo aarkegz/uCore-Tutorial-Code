@@ -4,5 +4,7 @@
 void console_putchar(int);
 int console_getchar();
 void shutdown();
+void exit_success();
+void exit_failure();
 
 #endif // SBI_H
