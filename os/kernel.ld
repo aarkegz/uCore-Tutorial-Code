@@ -1,5 +1,5 @@
 OUTPUT_ARCH(riscv)
-ENTRY(_entry)
+ENTRY(_start)
 BASE_ADDRESS = 0x80200000;
 
 SECTIONS
@@ -11,9 +11,6 @@ SECTIONS
     .text : {
         *(.text.entry)
         *(.text .text.*)
-        . = ALIGN(0x1000);
-        *(trampsec)
-        . = ALIGN(0x1000);
     }
 
     . = ALIGN(4K);
@@ -28,7 +25,6 @@ SECTIONS
     erodata = .;
     sdata = .;
     .data : {
-        *(.data.apps)
         *(.data .data.*)
         *(.sdata .sdata.*)
     }

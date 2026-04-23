@@ -1,6 +1,6 @@
     .section .text.entry
-    .globl _entry
-_entry:
+    .globl _start
+_start:
     la sp, boot_stack_top
     call main
 
