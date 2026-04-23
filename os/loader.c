@@ -15,12 +15,12 @@ void loader_init()
 	app_num = *app_info_ptr;
 	app_info_ptr++;
 	s = _app_names;
-	printf("app list:\n");
+	infof("[kernel] num_app = %d", app_num);
 	for (int i = 0; i < app_num; ++i) {
 		int len = strlen(s);
 		strncpy(names[i], (const char *)s, len);
 		s += len + 1;
-		printf("%s\n", names[i]);
+		infof("[kernel] app_%d: %s", i, names[i]);
 	}
 }
 
@@ -100,5 +100,11 @@ int load_init_app()
 	debugf("load init proc %s", INIT_PROC);
 	loader(id, p);
 	add_task(p);
+	// Memory fence about fetching the instruction memory.
+	// It is guaranteed that a subsequent instruction fetch must
+	// observe all previous writes to the instruction memory.
+	// Therefore, fence.i must be executed after we have loaded
+	// the code of all apps into the instruction memory.
+	asm volatile("fence.i");
 	return 0;
 }

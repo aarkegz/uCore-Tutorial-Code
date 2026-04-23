@@ -114,6 +114,32 @@ uint64 sys_sbrk(int n)
         return addr;
 }
 
+
+
+// TODO: add support for mmap and munmap syscall. (LAB1)
+// hint: read through docstrings in vm.c. Watching CH4 video may also help.
+// Note the return value and PTE flags (especially U,X,W,R)
+uint64 sys_mmap(uint64 start, uint64 len, uint64 port)
+{
+	// TODO: implement sys_mmap (LAB1)
+	return -1;
+}
+
+uint64 sys_munmap(uint64 start, uint64 len)
+{
+	// TODO: implement sys_munmap (LAB1)
+	return -1;
+}
+
+/*
+* LAB1: you may need to define sys_trace here
+*/
+uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
+{
+	// TODO: implement sys_trace (LAB1)
+	return -1;
+}
+
 extern char trap_page[];
 
 void syscall()
@@ -159,8 +185,20 @@ void syscall()
 		ret = sys_spawn(args[0]);
 		break;
 	case SYS_sbrk:
-                ret = sys_sbrk(args[0]);
-                break;
+		ret = sys_sbrk(args[0]);
+		break;
+	case SYS_mmap:
+		ret = sys_mmap(args[0], args[1], args[2]);
+		break;
+	case SYS_munmap:
+		ret = sys_munmap(args[0], args[1]);
+		break;
+	/*
+	* LAB1: you may need to add SYS_trace case here
+	*/
+	case SYS_trace:
+		ret = sys_trace(args[0], args[1], args[2]);
+		break;
 	default:
 		ret = -1;
 		errorf("unknown syscall %d", id);
