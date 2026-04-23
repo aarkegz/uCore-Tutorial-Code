@@ -1,40 +1,33 @@
 #include "console.h"
 #include "defs.h"
 
-extern char s_text[];
-extern char e_text[];
-extern char s_rodata[];
-extern char e_rodata[];
-extern char s_data[];
-extern char e_data[];
-extern char s_bss[];
-extern char e_bss[];
+extern char stext[];
+extern char etext[];
+extern char srodata[];
+extern char erodata[];
+extern char sdata[];
+extern char edata[];
+extern char sbss[];
+extern char ebss[];
+extern char boot_stack_lower_bound[];
+extern char boot_stack_top[];
 
-int threadid()
-{
-	return 0;
-}
-
-void clean_bss()
+void clear_bss()
 {
 	char *p;
-	for (p = s_bss; p < e_bss; ++p)
+	for (p = sbss; p < ebss; ++p)
 		*p = 0;
 }
 
 void main()
 {
-	clean_bss();
-	console_init();
-	printf("\n");
-	printf("hello wrold!\n");
-	errorf("stext: %p", s_text);
-	warnf("etext: %p", e_text);
-	infof("sroda: %p", s_rodata);
-	debugf("eroda: %p", e_rodata);
-	debugf("sdata: %p", s_data);
-	infof("edata: %p", e_data);
-	warnf("sbss : %p", s_bss);
-	errorf("ebss : %p", e_bss);
-	panic("ALL DONE");
+	clear_bss();
+	printf("[kernel] Hello, world!\n");
+	tracef("[kernel] .text [%p, %p)", stext, etext);
+	debugf("[kernel] .rodata [%p, %p)", srodata, erodata);
+	infof("[kernel] .data [%p, %p)", sdata, edata);
+	warnf("[kernel] boot_stack top=%p, lower_bound=%p", boot_stack_top,
+	      boot_stack_lower_bound);
+	errorf("[kernel] .bss [%p, %p)", sbss, ebss);
+	exit_success();
 }
