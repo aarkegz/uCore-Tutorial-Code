@@ -173,7 +173,10 @@ found:
 	memset(p->syscall_count, 0, sizeof(p->syscall_count));
 	p->priority = 16;
 	p->stride = 0;
-	// LAB5: (1) you may initialize your new proc variables here
+	p->deadlock_detect_enabled = 0;
+	memset(p->available, 0, sizeof(p->available));
+	memset(p->allocation, 0, sizeof(p->allocation));
+	memset(p->request, 0, sizeof(p->request));
 	return p;
 }
 

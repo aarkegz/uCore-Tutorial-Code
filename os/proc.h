@@ -77,9 +77,12 @@ struct proc {
 	uint64 syscall_count[500]; // syscall invocation counters for sys_trace
 	uint64 priority; // process priority for stride scheduling
 	uint64 stride; // current stride for stride scheduling
-	// LAB5: (1) Define your variables for deadlock detect here.
-	//			 You may need a flag to record if detection enabled,
-	//       and some arrays for detection algorithm.
+	// Deadlock detection (LAB5)
+	// Resource indices: 0..LOCK_POOL_SIZE-1 = mutexes, LOCK_POOL_SIZE..2*LOCK_POOL_SIZE-1 = semaphores
+	int deadlock_detect_enabled;
+	int available[2 * LOCK_POOL_SIZE];
+	int allocation[NTHREAD][2 * LOCK_POOL_SIZE];
+	int request[NTHREAD][2 * LOCK_POOL_SIZE];
 };
 
 int cpuid();
