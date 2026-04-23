@@ -24,7 +24,13 @@ void clear_bss()
 void main()
 {
 	clear_bss();
-	printf("hello wrold!\n");
+	printf("[kernel] Hello, world!\n");
+	tracef("[kernel] .text [%p, %p)", stext, etext);
+	debugf("[kernel] .rodata [%p, %p)", srodata, erodata);
+	infof("[kernel] .data [%p, %p)", sdata, edata);
+	warnf("[kernel] boot_stack top=bottom=%p, lower_bound=%p",
+	      boot_stack_top, boot_stack_lower_bound);
+	errorf("[kernel] .bss [%p, %p)", sbss, ebss);
 	trap_init();
 	loader_init();
 	run_next_app();

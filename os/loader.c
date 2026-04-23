@@ -14,6 +14,11 @@ void loader_init()
 	app_info_ptr = (uint64 *)_app_num;
 	app_cur = -1;
 	app_num = *app_info_ptr;
+	infof("[kernel] num_app = %d", app_num);
+	for (int i = 0; i < app_num; i++) {
+		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[1 + i],
+		      app_info_ptr[2 + i]);
+	}
 }
 
 __attribute__((aligned(4096))) char user_stack[USER_STACK_SIZE];
@@ -24,6 +29,12 @@ int load_app(uint64 *info)
 	uint64 start = info[0], end = info[1], length = end - start;
 	memset((void *)BASE_ADDRESS, 0, MAX_APP_SIZE);
 	memmove((void *)BASE_ADDRESS, (void *)start, length);
+	// Memory fence about fetching the instruction memory.
+	// It is guaranteed that a subsequent instruction fetch must
+	// observe all previous writes to the instruction memory.
+	// Therefore, fence.i must be executed after we have loaded
+	// the code of the next app into the instruction memory.
+	asm volatile("fence.i");
 	return length;
 }
 

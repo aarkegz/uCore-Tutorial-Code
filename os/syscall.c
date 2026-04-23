@@ -19,8 +19,8 @@ __attribute__((noreturn)) void sys_exit(int code)
 {
 	debugf("sysexit(%d)", code);
 	run_next_app();
-	printf("ALL DONE\n");
-	shutdown();
+	infof("All applications completed!");
+	exit_success();
 	__builtin_unreachable();
 }
 

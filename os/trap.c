@@ -49,8 +49,8 @@ void usertrap(struct trapframe *trapframe)
 	}
 	infof("switch to next app");
 	run_next_app();
-	printf("ALL DONE\n");
-	shutdown();
+	infof("All applications completed!");
+	exit_success();
 }
 
 //
