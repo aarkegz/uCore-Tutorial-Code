@@ -58,5 +58,11 @@ int load_init_app()
 	t->trapframe->a0 = push_argv(p, argv);
 	t->state = RUNNABLE;
 	add_task(t);
+	// Memory fence about fetching the instruction memory.
+	// It is guaranteed that a subsequent instruction fetch must
+	// observe all previous writes to the instruction memory.
+	// Therefore, fence.i must be executed after we have loaded
+	// the code of all apps into the instruction memory.
+	asm volatile("fence.i");
 	return 0;
 }

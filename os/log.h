@@ -18,7 +18,7 @@ extern void shutdown();
 #define USE_LOG_ERROR
 #define USE_LOG_WARN
 
-#endif // LOG_LEVEL_ERROR
+#endif // LOG_LEVEL_WARN
 
 #if defined(LOG_LEVEL_INFO)
 

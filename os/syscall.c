@@ -1,6 +1,7 @@
 #include "console.h"
 #include "defs.h"
 #include "loader.h"
+#include "signal.h"
 #include "sync.h"
 #include "syscall.h"
 #include "syscall_ids.h"
@@ -177,6 +178,31 @@ err0:
 	fileclose(f0);
 	fileclose(f1);
 	return -1;
+}
+
+uint64 sys_dup(int fd)
+{
+	if (fd < 0 || fd >= FD_BUFFER_SIZE)
+		return -1;
+	struct proc *p = curr_proc();
+	struct file *f = p->files[fd];
+	if (f == NULL) {
+		return -1;
+	}
+	/* Find the smallest available fd and duplicate the file */
+	int new_fd = -1;
+	for (int i = 0; i < FD_BUFFER_SIZE; i++) {
+		if (p->files[i] == NULL) {
+			new_fd = i;
+			break;
+		}
+	}
+	if (new_fd < 0) {
+		return -1;
+	}
+	f->ref++;
+	p->files[new_fd] = f;
+	return new_fd;
 }
 
 uint64 sys_openat(uint64 va, uint64 omode, uint64 _flags)
@@ -363,7 +389,99 @@ int sys_condvar_wait(int cond_id, int mutex_id)
 
 // LAB5: (2) you may need to define function enable_deadlock_detect here
 
+// TODO: add support for mmap and munmap syscall. (LAB1)
+// hint: read through docstrings in vm.c. Watching CH4 video may also help.
+// Note the return value and PTE flags (especially U,X,W,R)
+uint64 sys_mmap(uint64 start, uint64 len, uint64 port)
+{
+	// TODO: implement sys_mmap (LAB1)
+	return -1;
+}
+
+uint64 sys_munmap(uint64 start, uint64 len)
+{
+	// TODO: implement sys_munmap (LAB1)
+	return -1;
+}
+
+/*
+* LAB1: you may need to define sys_trace here
+*/
+uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
+{
+	// TODO: implement sys_trace (LAB1)
+	return -1;
+}
+
 extern char trap_page[];
+
+uint64 sys_kill(int pid, int signum)
+{
+	struct proc *p = pid2proc(pid);
+	if (p == NULL) {
+		return -1;
+	}
+	if (signum < 0 || signum > MAX_SIG) {
+		return -1;
+	}
+	uint32 signal = 1U << signum;
+	if (p->signals & signal) {
+		return -1;
+	}
+	p->signals |= signal;
+	return 0;
+}
+
+uint64 sys_sigprocmask(uint32 mask)
+{
+	struct proc *p = curr_proc();
+	uint32 old_mask = p->signal_mask;
+	p->signal_mask = mask;
+	return old_mask;
+}
+
+uint64 sys_sigreturn(void)
+{
+	struct proc *p = curr_proc();
+	p->handling_sig = -1;
+	/* Restore the trap context from backup */
+	if (p->trap_ctx_backup) {
+		*p->trapframe = *p->trap_ctx_backup;
+	}
+	/* Return the value of a0 in the trap context */
+	return p->trapframe->a0;
+}
+
+static int check_sigaction_error(uint32 signal, uint64 action, uint64 old_action)
+{
+	if (action == 0 || old_action == 0 || signal == SIGKILL ||
+	    signal == SIGSTOP) {
+		return 1;
+	}
+	return 0;
+}
+
+uint64 sys_sigaction(int signum, uint64 action, uint64 old_action)
+{
+	struct proc *p = curr_proc();
+	if (signum < 0 || signum > MAX_SIG) {
+		return -1;
+	}
+	uint32 signal = 1U << signum;
+	if (check_sigaction_error(signal, action, old_action)) {
+		return -1;
+	}
+	/* Save old action to user space */
+	struct SignalAction prev = p->signal_actions.table[signum];
+	copyout(p->pagetable, old_action, (char *)&prev,
+		sizeof(struct SignalAction));
+	/* Read new action from user space */
+	struct SignalAction new_action;
+	copyin(p->pagetable, (char *)&new_action, action,
+	       sizeof(struct SignalAction));
+	p->signal_actions.table[signum] = new_action;
+	return 0;
+}
 
 void syscall()
 {
@@ -421,6 +539,12 @@ void syscall()
 	case SYS_thread_create:
 		ret = sys_thread_create(args[0], args[1]);
 		break;
+	case SYS_dup:
+		ret = sys_dup(args[0]);
+		break;
+	case SYS_fstat:
+		ret = sys_fstat(args[0], args[1]);
+		break;
 	case SYS_gettid:
 		ret = sys_gettid();
 		break;
@@ -455,6 +579,42 @@ void syscall()
 		ret = sys_condvar_wait(args[0], args[1]);
 		break;
 	// LAB5: (2) you may need to add case SYS_enable_deadlock_detect here
+	case SYS_unlinkat:
+		ret = sys_unlinkat(args[0], args[1], args[2]);
+		break;
+	case SYS_kill:
+		ret = sys_kill(args[0], args[1]);
+		break;
+	case SYS_rt_sigaction:
+		ret = sys_sigaction(args[0], args[1], args[2]);
+		break;
+	case SYS_rt_sigprocmask:
+		ret = sys_sigprocmask(args[0]);
+		break;
+	case SYS_rt_sigreturn:
+		ret = sys_sigreturn();
+		break;
+	case SYS_spawn:
+		ret = sys_spawn(args[0]);
+		break;
+	case SYS_setpriority:
+		ret = sys_set_priority(args[0]);
+		break;
+	case SYS_sbrk:
+		ret = sys_sbrk(args[0]);
+		break;
+	case SYS_mmap:
+		ret = sys_mmap(args[0], args[1], args[2]);
+		break;
+	case SYS_munmap:
+		ret = sys_munmap(args[0], args[1]);
+		break;
+	/*
+	* LAB1: you may need to add SYS_trace case here
+	*/
+	case SYS_trace:
+		ret = sys_trace(args[0], args[1], args[2]);
+		break;
 	default:
 		ret = -1;
 		errorf("unknown syscall %d", id);

@@ -2,6 +2,7 @@
 #define PROC_H
 
 #include "riscv.h"
+#include "signal.h"
 #include "types.h"
 #include "sync.h"
 
@@ -63,6 +64,16 @@ struct proc {
 	struct mutex mutex_pool[LOCK_POOL_SIZE];
 	struct semaphore semaphore_pool[LOCK_POOL_SIZE];
 	struct condvar condvar_pool[LOCK_POOL_SIZE];
+	uint64 program_brk;
+	uint64 heap_bottom;
+	/* Signal handling */
+	uint32 signals;
+	uint32 signal_mask;
+	int handling_sig; /* Currently handling signal, -1 if none */
+	struct SignalActions signal_actions;
+	int killed; /* Whether the task has been killed */
+	int frozen; /* Whether the task is frozen by signal */
+	struct trapframe *trap_ctx_backup; /* Backup trap context for signal handling */
 	// LAB5: (1) Define your variables for deadlock detect here.
 	//			 You may need a flag to record if detection enabled,
 	//       and some arrays for detection algorithm.
@@ -89,7 +100,14 @@ uint64 get_thread_trapframe_va(int tid);
 int fdalloc(struct file *);
 int init_stdio(struct proc *);
 int push_argv(struct proc *, char **);
+void freepid(int pid);
+struct proc *pid2proc(int pid);
 // swtch.S
 void swtch(struct context *, struct context *);
+
+
+extern struct proc *init_proc;
+
+int growproc(int n);
 
 #endif // PROC_H

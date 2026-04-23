@@ -12,12 +12,13 @@ __attribute__((aligned(4096))) char trapframe[NPROC][NTHREAD][TRAP_PAGE_SIZE];
 extern char boot_stack_top[];
 struct thread *current_thread;
 struct thread idle;
+struct proc *init_proc;
 struct queue task_queue;
 
-int procid()
-{
-	return curr_proc()->pid;
-}
+// Recyclable PID allocator
+static int recycled_pids[NPROC];
+static int recycled_count = 0;
+static int next_pid = 1;
 
 int threadid()
 {
@@ -27,6 +28,11 @@ int threadid()
 int cpuid()
 {
 	return 0;
+}
+
+int procid()
+{
+	return curr_proc()->pid;
 }
 
 struct proc *curr_proc()
@@ -60,8 +66,17 @@ void proc_init()
 
 int allocpid()
 {
-	static int PID = 1;
-	return PID++;
+	if (recycled_count > 0) {
+		return recycled_pids[--recycled_count];
+	}
+	return next_pid++;
+}
+
+void freepid(int pid)
+{
+	if (pid > 0 && recycled_count < NPROC) {
+		recycled_pids[recycled_count++] = pid;
+	}
 }
 
 int alloctid(const struct proc *process)
@@ -142,6 +157,16 @@ found:
 	p->next_mutex_id = 0;
 	p->next_semaphore_id = 0;
 	p->next_condvar_id = 0;
+	p->program_brk = 0;
+	p->heap_bottom = 0;
+	/* Initialize signal fields */
+	p->signals = 0;
+	p->signal_mask = 0;
+	p->handling_sig = -1;
+	signal_actions_init(&p->signal_actions);
+	p->killed = 0;
+	p->frozen = 0;
+	p->trap_ctx_backup = NULL;
 	// LAB5: (1) you may initialize your new proc variables here
 	return p;
 }
@@ -299,10 +324,14 @@ void freeproc(struct proc *p)
 	p->pagetable = 0;
 	p->max_page = 0;
 	p->ustack_base = 0;
-	for (int i = 0; i > FD_BUFFER_SIZE; i++) {
+	for (int i = 0; i < FD_BUFFER_SIZE; i++) {
 		if (p->files[i] != NULL) {
 			fileclose(p->files[i]);
 		}
+	}
+	if (p->trap_ctx_backup) {
+		kfree((char *)p->trap_ctx_backup);
+		p->trap_ctx_backup = NULL;
 	}
 	p->state = P_UNUSED;
 }
@@ -332,6 +361,9 @@ int fork()
 	}
 
 	np->parent = p;
+	/* Inherit signal_mask and signal_actions */
+	np->signal_mask = p->signal_mask;
+	np->signal_actions = p->signal_actions;
 	// currently only copy main thread
 	struct thread *nt = &np->threads[allocthread(np, 0, 0)],
 		      *t = &p->threads[0];
@@ -419,12 +451,13 @@ int wait(int pid, int *code)
 				havekids = 1;
 				if (np->state == ZOMBIE) {
 					// Found one.
+					int recycled_pid = np->pid;
 					np->state = P_UNUSED;
-					pid = np->pid;
+					freepid(recycled_pid);
 					*code = np->exit_code;
 					memset((void *)np->threads[0].kstack, 9,
 					       KSTACK_SIZE);
-					return pid;
+					return recycled_pid;
 				}
 			}
 		}
@@ -454,13 +487,17 @@ void exit(int code)
 		if (p->parent != NULL) {
 			// Parent should `wait`
 			p->state = ZOMBIE;
+		} else {
+			// No parent, recycle PID immediately
+			freepid(p->pid);
 		}
-		// Set the `parent` of all children to NULL
+		// Reparent children to init_proc (usershell)
 		struct proc *np;
 		for (np = pool; np < &pool[NPROC]; np++) {
 			if (np->parent == p) {
-				np->parent = NULL;
+				np->parent = init_proc;
 			}
+		}
 		}
 	}
 	sched();
@@ -478,4 +515,37 @@ int fdalloc(struct file *f)
 		}
 	}
 	return -1;
+}
+
+struct proc *pid2proc(int pid)
+{
+	struct proc *p;
+	for (p = pool; p < &pool[NPROC]; p++) {
+		if (p->state != P_UNUSED && p->pid == pid) {
+			return p;
+		}
+	}
+	return NULL;
+}
+
+// Grow or shrink user memory by n bytes.
+// Return 0 on success, -1 on failure.
+int growproc(int n)
+{
+	uint64 program_brk;
+	struct proc *p = curr_proc();
+	program_brk = p->program_brk;
+	int new_brk = program_brk + n - p->heap_bottom;
+	if (new_brk < 0) {
+		return -1;
+	}
+	if (n > 0) {
+		if ((program_brk = uvmalloc(p->pagetable, program_brk, program_brk + n, PTE_W)) == 0) {
+			return -1;
+		}
+	} else if (n < 0) {
+		program_brk = uvmdealloc(p->pagetable, program_brk, program_brk + n);
+	}
+	p->program_brk = program_brk;
+	return 0;
 }
