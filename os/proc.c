@@ -101,7 +101,6 @@ void sched(void)
 	struct proc *p = curr_proc();
 	if (p->state == RUNNING)
 		panic("sched running");
-	current_proc = 0;
 	swtch(&p->context, &idle.context);
 }
 
