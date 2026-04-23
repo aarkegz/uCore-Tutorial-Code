@@ -44,6 +44,12 @@ void proc_init()
 		p->state = UNUSED;
 		p->kstack = (uint64)kstack[p - pool];
 		p->trapframe = (struct trapframe *)trapframe[p - pool];
+		memset(p->syscall_count, 0, sizeof(p->syscall_count));
+		p->priority = 16;
+		p->stride = 0;
+		/*
+		* LAB1: you may need to initialize your new fields of proc here
+		*/
 	}
 	idle.kstack = (uint64)boot_stack_top;
 	idle.pid = IDLE_PID;
@@ -68,14 +74,37 @@ void freepid(int pid)
 
 struct proc *fetch_task()
 {
-	int index = pop_queue(&task_queue);
-	if (index < 0) {
+	if (task_queue.empty) {
 		debugf("No task to fetch\n");
 		return NULL;
 	}
-	debugf("fetch task %d(pid=%d) from task queue\n", index,
-	       pool[index].pid);
-	return pool + index;
+
+	// Extract all elements from queue
+	int indices[QUEUE_SIZE];
+	int count = 0;
+	while (!task_queue.empty) {
+		indices[count++] = pop_queue(&task_queue);
+	}
+
+	// Find the one with minimum stride
+	int min_idx = 0;
+	for (int i = 1; i < count; i++) {
+		if (pool[indices[i]].stride < pool[indices[min_idx]].stride) {
+			min_idx = i;
+		}
+	}
+
+	int selected = indices[min_idx];
+
+	// Push back the rest
+	for (int i = 0; i < count; i++) {
+		if (i != min_idx)
+			push_queue(&task_queue, indices[i]);
+	}
+
+	debugf("fetch task %d(pid=%d) stride=%lu\n", selected,
+	       pool[selected].pid, pool[selected].stride);
+	return pool + selected;
 }
 
 void add_task(struct proc *p)
@@ -112,6 +141,9 @@ found:
 	memset((void *)p->kstack, 0, PAGE_SIZE * 2);
 	memset(p->trapframe, 0, PAGE_SIZE);
 	memset((void *)p->files, 0, sizeof(struct file *) * FD_BUFFER_SIZE);
+	memset(p->syscall_count, 0, sizeof(p->syscall_count));
+	p->priority = 16;
+	p->stride = 0;
 	p->context.ra = (uint64)usertrapret;
 	p->context.sp = p->kstack + PAGE_SIZE * 2;
 	return p;
@@ -137,19 +169,6 @@ void scheduler()
 {
 	struct proc *p;
 	for (;;) {
-		/*int has_proc = 0;
-		for (p = pool; p < &pool[NPROC]; p++) {
-			if (p->state == RUNNABLE) {
-				has_proc = 1;
-				tracef("swtich to proc %d", p - pool);
-				p->state = RUNNING;
-				current_proc = p;
-				swtch(&idle.context, &p->context);
-			}
-		}
-		if(has_proc == 0) {
-			panic("all app are over!\n");
-		}*/
 		p = fetch_task();
 		if (p == NULL) {
 			panic("all app are over!\n");
@@ -157,6 +176,7 @@ void scheduler()
 		tracef("swtich to proc %d", p - pool);
 		p->state = RUNNING;
 		current_proc = p;
+		p->stride += BIG_STRIDE / p->priority;
 		swtch(&idle.context, &p->context);
 	}
 }

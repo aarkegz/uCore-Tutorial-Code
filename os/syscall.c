@@ -87,10 +87,11 @@ uint64 sys_gettimeofday(uint64 val, int _tz)
 {
 	struct proc *p = curr_proc();
 	uint64 cycle = get_cycle();
-	TimeVal t;
-	t.sec = cycle / CPU_FREQ;
-	t.usec = (cycle % CPU_FREQ) * 1000000 / CPU_FREQ;
-	copyout(p->pagetable, val, (char *)&t, sizeof(TimeVal));
+	TimeVal tv;
+	tv.sec = cycle / CPU_FREQ;
+	tv.usec = (cycle % CPU_FREQ) * 1000000 / CPU_FREQ;
+	if (copyout(p->pagetable, (uint64)val, (char *)&tv, sizeof(TimeVal)) < 0)
+		return -1;
 	return 0;
 }
 
@@ -144,14 +145,31 @@ uint64 sys_wait(int pid, uint64 va)
 
 uint64 sys_spawn(uint64 va)
 {
-	// TODO: your job is to complete the sys call
-	return -1;
+	struct proc *p = curr_proc();
+	char name[200];
+	copyinstr(p->pagetable, name, va, 200);
+
+	int id = get_id_by_name(name);
+	if (id < 0)
+		return -1;
+
+	struct proc *np = allocproc();
+	if (np == 0)
+		return -1;
+
+	loader(id, np);
+	np->parent = p;
+	add_task(np);
+	return np->pid;
 }
 
 uint64 sys_set_priority(long long prio)
 {
-	// TODO: your job is to complete the sys call
-	return -1;
+	if (prio < 2)
+		return -1;
+	struct proc *p = curr_proc();
+	p->priority = (uint64)prio;
+	return (uint64)prio;
 }
 
 uint64 sys_openat(uint64 va, uint64 omode, uint64 _flags)
@@ -213,14 +231,78 @@ uint64 sys_sbrk(int n)
 // Note the return value and PTE flags (especially U,X,W,R)
 uint64 sys_mmap(uint64 start, uint64 len, uint64 port)
 {
-	// TODO: implement sys_mmap (LAB1)
-	return -1;
+	struct proc *p = curr_proc();
+
+	// Check: start must be page-aligned
+	if (start % PGSIZE != 0)
+		return -1;
+	// Check: port must only use bits 0-2
+	if (port & ~0x7)
+		return -1;
+	// Check: port must have at least one permission bit set
+	if ((port & 0x7) == 0)
+		return -1;
+	// Check: len must be positive
+	if (len == 0)
+		return -1;
+
+	// Check: all pages in [start, start+len) must be unmapped
+	uint64 npages = (len + PGSIZE - 1) / PGSIZE;
+	for (uint64 a = start; a < start + npages * PGSIZE; a += PGSIZE) {
+		if (walkaddr(p->pagetable, a) != 0)
+			return -1;
+	}
+
+	// Convert prot bits to PTE flags:
+	// port bit0 (R) -> PTE_R (bit1), port bit1 (W) -> PTE_W (bit2),
+	// port bit2 (X) -> PTE_X (bit3), plus PTE_U and PTE_V
+	uint64 perm = PTE_U | PTE_V;
+	if (port & 1) // PROT_READ
+		perm |= PTE_R;
+	if (port & 2) // PROT_WRITE
+		perm |= PTE_W;
+	if (port & 4) // PROT_EXEC
+		perm |= PTE_X;
+
+	// Allocate and map each page
+	for (uint64 a = start; a < start + npages * PGSIZE; a += PGSIZE) {
+		char *mem = kalloc();
+		if (mem == 0) {
+			// Out of memory, undo what we've mapped so far
+			uvmunmap(p->pagetable, start, (a - start) / PGSIZE, 1);
+			return -1;
+		}
+		memset(mem, 0, PGSIZE);
+		if (mappages(p->pagetable, a, PGSIZE, (uint64)mem, perm) != 0) {
+			kfree(mem);
+			uvmunmap(p->pagetable, start, (a - start) / PGSIZE, 1);
+			return -1;
+		}
+	}
+	return 0;
 }
 
 uint64 sys_munmap(uint64 start, uint64 len)
 {
-	// TODO: implement sys_munmap (LAB1)
-	return -1;
+	struct proc *p = curr_proc();
+
+	// Check: start must be page-aligned
+	if (start % PGSIZE != 0)
+		return -1;
+	if (len == 0)
+		return -1;
+
+	uint64 npages = (len + PGSIZE - 1) / PGSIZE;
+
+	// Check: all pages must be mapped
+	for (uint64 a = start; a < start + npages * PGSIZE; a += PGSIZE) {
+		if (walkaddr(p->pagetable, a) == 0)
+			return -1;
+	}
+
+	// Unmap and free physical pages
+	uvmunmap(p->pagetable, start, npages, 1);
+	return 0;
 }
 
 /*
@@ -228,8 +310,34 @@ uint64 sys_munmap(uint64 start, uint64 len)
 */
 uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
 {
-	// TODO: implement sys_trace (LAB1)
-	return -1;
+	struct proc *p = curr_proc();
+	switch (trace_request) {
+	case 0: { // read byte at virtual address id
+		uint64 pa = walkaddr(p->pagetable, id);
+		if (pa == 0)
+			return -1;
+		pte_t *pte = walk(p->pagetable, id, 0);
+		if (pte == 0 || (*pte & PTE_U) == 0 || (*pte & PTE_R) == 0)
+			return -1;
+		return *(uint8 *)(pa | (id & 0xFFFULL));
+	}
+	case 1: { // write byte data to virtual address id
+		uint64 pa = walkaddr(p->pagetable, id);
+		if (pa == 0)
+			return -1;
+		pte_t *pte = walk(p->pagetable, id, 0);
+		if (pte == 0 || (*pte & PTE_U) == 0 || (*pte & PTE_W) == 0)
+			return -1;
+		*(uint8 *)(pa | (id & 0xFFFULL)) = (uint8)data;
+		return 0;
+	}
+	case 2: // query syscall count for syscall id
+		if (id >= 500)
+			return -1;
+		return p->syscall_count[id];
+	default:
+		return -1;
+	}
 }
 
 extern char trap_page[];
@@ -242,6 +350,11 @@ void syscall()
 			   trapframe->a3, trapframe->a4, trapframe->a5 };
 	tracef("syscall %d args = [%x, %x, %x, %x, %x, %x]", id, args[0],
 	       args[1], args[2], args[3], args[4], args[5]);
+	/*
+	* LAB1: you may need to update syscall counter here
+	*/
+	if (id >= 0 && id < 500)
+		curr_proc()->syscall_count[id]++;
 	switch (id) {
 	case SYS_write:
 		ret = sys_write(args[0], args[1], args[2]);

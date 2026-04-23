@@ -27,5 +27,6 @@
 #define MAX_STR_LEN (200)
 #define IDLE_PID (0)
 #define MAX_ARG_NUM (32) // max exec arguments
+#define BIG_STRIDE 100000000ULL // for stride scheduling
 
 #endif // CONST_H

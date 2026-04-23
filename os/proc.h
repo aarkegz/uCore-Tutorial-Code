@@ -47,6 +47,12 @@ struct proc {
 		[FD_BUFFER_SIZE]; //File descriptor table, using to record the files opened by the process
 	uint64 program_brk;
 	uint64 heap_bottom;
+	uint64 syscall_count[500]; // syscall invocation counters for sys_trace
+	uint64 priority; // process priority for stride scheduling
+	uint64 stride; // current stride for stride scheduling
+	/*
+	* LAB1: you may need to add some new fields here
+	*/
 };
 
 int cpuid();
