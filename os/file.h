@@ -8,6 +8,19 @@
 #define PIPESIZE (512)
 #define FILEPOOLSIZE (NPROC * FD_BUFFER_SIZE)
 
+// Stat structure for sys_fstat
+#define STAT_MODE_NULL 0
+#define STAT_MODE_DIR  0o040000
+#define STAT_MODE_FILE 0o100000
+
+struct Stat {
+	uint64 dev;   // device ID
+	uint64 ino;   // inode number
+	uint32 mode;  // file type (STAT_MODE_*)
+	uint32 nlink; // number of hard links
+	uint64 pad[7];
+};
+
 // in-memory copy of an inode,it can be used to quickly locate file entities on disk
 struct inode {
 	uint dev; // Device number
@@ -15,9 +28,9 @@ struct inode {
 	int ref; // Reference count
 	int valid; // inode has been read from disk?
 	short type; // copy of disk inode
+	short nlink; // number of links to inode
 	uint size;
 	uint addrs[NDIRECT + 1];
-	// LAB4: You may need to add link count here
 };
 
 // Defines a file in memory that provides information about the current use of the file and the corresponding inode location

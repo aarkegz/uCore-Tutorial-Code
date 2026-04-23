@@ -197,21 +197,100 @@ uint64 sys_close(int fd)
 
 int sys_fstat(int fd, uint64 stat)
 {
-	//TODO: your job is to complete the syscall
-	return -1;
+	struct proc *p = curr_proc();
+	if (fd < 0 || fd >= FD_BUFFER_SIZE)
+		return -1;
+	struct file *f = p->files[fd];
+	if (f == NULL || f->type != FD_INODE)
+		return -1;
+	struct inode *ip = f->ip;
+	ivalid(ip);
+	struct Stat st;
+	st.dev = ip->dev;
+	st.ino = ip->inum;
+	if (ip->type == T_DIR)
+		st.mode = STAT_MODE_DIR;
+	else if (ip->type == T_FILE)
+		st.mode = STAT_MODE_FILE;
+	else
+		st.mode = STAT_MODE_NULL;
+	st.nlink = ip->nlink;
+	memset(st.pad, 0, sizeof(st.pad));
+	if (copyout(p->pagetable, stat, (char *)&st, sizeof(st)) < 0)
+		return -1;
+	return 0;
 }
 
 int sys_linkat(int olddirfd, uint64 oldpath, int newdirfd, uint64 newpath,
 	       uint64 flags)
 {
-	//TODO: your job is to complete the syscall
-	return -1;
+	struct proc *p = curr_proc();
+	char old_name[MAXPATH], new_name[MAXPATH];
+	copyinstr(p->pagetable, old_name, oldpath, MAXPATH);
+	copyinstr(p->pagetable, new_name, newpath, MAXPATH);
+
+	struct inode *dp = root_dir();
+	ivalid(dp);
+	struct inode *ip = dirlookup(dp, old_name, 0);
+	if (ip == 0) {
+		iput(dp);
+		return -1;
+	}
+	ivalid(ip);
+	if (ip->type == T_DIR) {
+		iput(ip);
+		iput(dp);
+		return -1;
+	}
+	// Cannot link to self
+	if (strncmp(old_name, new_name, DIRSIZ) == 0) {
+		iput(ip);
+		iput(dp);
+		return -1;
+	}
+	ip->nlink++;
+	iupdate(ip);
+	if (dirlink(dp, new_name, ip->inum) < 0) {
+		ip->nlink--;
+		iupdate(ip);
+		iput(ip);
+		iput(dp);
+		return -1;
+	}
+	iput(ip);
+	iput(dp);
+	return 0;
 }
 
 int sys_unlinkat(int dirfd, uint64 name, uint64 flags)
 {
-	//TODO: your job is to complete the syscall
-	return -1;
+	struct proc *p = curr_proc();
+	char path[MAXPATH];
+	copyinstr(p->pagetable, path, name, MAXPATH);
+
+	struct inode *dp = root_dir();
+	ivalid(dp);
+	struct inode *ip = dirlookup(dp, path, 0);
+	if (ip == 0) {
+		iput(dp);
+		return -1;
+	}
+	ivalid(ip);
+	if (ip->type == T_DIR) {
+		iput(ip);
+		iput(dp);
+		return -1;
+	}
+	if (dirunlink(dp, path, ip->inum) < 0) {
+		iput(ip);
+		iput(dp);
+		return -1;
+	}
+	ip->nlink--;
+	iupdate(ip);
+	iput(ip);
+	iput(dp);
+	return 0;
 }
 
 uint64 sys_sbrk(int n)
