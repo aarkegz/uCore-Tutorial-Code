@@ -55,6 +55,9 @@ void proc_init()
 			struct thread *t = &p->threads[tid];
 			t->state = T_UNUSED;
 		}
+		memset(p->syscall_count, 0, sizeof(p->syscall_count));
+		p->priority = 16;
+		p->stride = 0;
 	}
 	idle.kstack = (uint64)boot_stack_top;
 	current_thread = &idle;
@@ -167,6 +170,9 @@ found:
 	p->killed = 0;
 	p->frozen = 0;
 	p->trap_ctx_backup = NULL;
+	memset(p->syscall_count, 0, sizeof(p->syscall_count));
+	p->priority = 16;
+	p->stride = 0;
 	// LAB5: (1) you may initialize your new proc variables here
 	return p;
 }
@@ -259,7 +265,7 @@ void scheduler()
 		}
 		// throw out freed threads
 		if (t->state != RUNNABLE) {
-			warnf("not RUNNABLE", t->process->pid, t->tid);
+			warnf("not RUNNABLE");
 			continue;
 		}
 		tracef("swtich to proc %d, thread %d", t->process->pid, t->tid);

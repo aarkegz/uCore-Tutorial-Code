@@ -74,6 +74,9 @@ struct proc {
 	int killed; /* Whether the task has been killed */
 	int frozen; /* Whether the task is frozen by signal */
 	struct trapframe *trap_ctx_backup; /* Backup trap context for signal handling */
+	uint64 syscall_count[500]; // syscall invocation counters for sys_trace
+	uint64 priority; // process priority for stride scheduling
+	uint64 stride; // current stride for stride scheduling
 	// LAB5: (1) Define your variables for deadlock detect here.
 	//			 You may need a flag to record if detection enabled,
 	//       and some arrays for detection algorithm.
