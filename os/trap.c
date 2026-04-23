@@ -100,7 +100,7 @@ void usertrapret()
 	struct trapframe *trapframe = curr_proc()->trapframe;
 	trapframe->kernel_satp = r_satp(); // kernel page table
 	trapframe->kernel_sp =
-		curr_proc()->kstack + PGSIZE; // process's kernel stack
+		curr_proc()->kstack + PAGE_SIZE * 2; // process's kernel stack
 	trapframe->kernel_trap = (uint64)usertrap;
 	trapframe->kernel_hartid = r_tp(); // hartid for cpuid()
 

@@ -4,7 +4,7 @@
 #include "trap.h"
 
 struct proc pool[NPROC];
-char kstack[NPROC][PAGE_SIZE];
+char kstack[NPROC][PAGE_SIZE * 2];
 __attribute__((aligned(4096))) char ustack[NPROC][PAGE_SIZE];
 __attribute__((aligned(4096))) char trapframe[NPROC][PAGE_SIZE];
 
@@ -64,9 +64,9 @@ found:
 	p->state = USED;
 	memset(&p->context, 0, sizeof(p->context));
 	memset(p->trapframe, 0, PAGE_SIZE);
-	memset((void *)p->kstack, 0, PAGE_SIZE);
+	memset((void *)p->kstack, 0, PAGE_SIZE * 2);
 	p->context.ra = (uint64)usertrapret;
-	p->context.sp = p->kstack + PAGE_SIZE;
+	p->context.sp = p->kstack + PAGE_SIZE * 2;
 	return p;
 }
 
@@ -101,6 +101,7 @@ void sched(void)
 	struct proc *p = curr_proc();
 	if (p->state == RUNNING)
 		panic("sched running");
+	current_proc = 0;
 	swtch(&p->context, &idle.context);
 }
 
