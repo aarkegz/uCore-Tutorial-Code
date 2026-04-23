@@ -279,6 +279,10 @@
 #define SYS_kexec_file_load 294
 #define SYS_spawn 400
 
+/*
+* LAB1: you may need to define SYS_trace here
+*/
+#define SYS_trace 410
 #define SYS_pidfd_send_signal 424
 #define SYS_io_uring_setup 425
 #define SYS_io_uring_enter 426

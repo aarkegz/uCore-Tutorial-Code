@@ -6,13 +6,20 @@
 #include "queue.h"
 
 struct proc pool[NPROC];
-__attribute__((aligned(16))) char kstack[NPROC][PAGE_SIZE];
-__attribute__((aligned(4096))) char trapframe[NPROC][TRAP_PAGE_SIZE];
+char kstack[NPROC][PAGE_SIZE * 2];
+__attribute__((aligned(4096))) char ustack[NPROC][PAGE_SIZE];
+__attribute__((aligned(4096))) char trapframe[NPROC][PAGE_SIZE];
 
 extern char boot_stack_top[];
 struct proc *current_proc;
+struct proc *init_proc;
 struct proc idle;
 struct queue task_queue;
+
+// Recyclable PID allocator
+static int recycled_pids[NPROC];
+static int recycled_count = 0;
+static int next_pid = 1;
 
 int threadid()
 {
@@ -46,8 +53,17 @@ void proc_init()
 
 int allocpid()
 {
-	static int PID = 1;
-	return PID++;
+	if (recycled_count > 0) {
+		return recycled_pids[--recycled_count];
+	}
+	return next_pid++;
+}
+
+void freepid(int pid)
+{
+	if (pid > 0 && recycled_count < NPROC) {
+		recycled_pids[recycled_count++] = pid;
+	}
 }
 
 struct proc *fetch_task()
@@ -93,11 +109,11 @@ found:
 	p->program_brk = 0;
         p->heap_bottom = 0;
 	memset(&p->context, 0, sizeof(p->context));
-	memset((void *)p->kstack, 0, KSTACK_SIZE);
-	memset((void *)p->trapframe, 0, TRAP_PAGE_SIZE);
+	memset((void *)p->kstack, 0, PAGE_SIZE * 2);
+	memset(p->trapframe, 0, PAGE_SIZE);
 	memset((void *)p->files, 0, sizeof(struct file *) * FD_BUFFER_SIZE);
 	p->context.ra = (uint64)usertrapret;
-	p->context.sp = p->kstack + KSTACK_SIZE;
+	p->context.sp = p->kstack + PAGE_SIZE * 2;
 	return p;
 }
 
@@ -288,10 +304,11 @@ int wait(int pid, int *code)
 				havekids = 1;
 				if (np->state == ZOMBIE) {
 					// Found one.
+					int recycled_pid = np->pid;
 					np->state = UNUSED;
-					pid = np->pid;
+					freepid(recycled_pid);
 					*code = np->exit_code;
-					return pid;
+					return recycled_pid;
 				}
 			}
 		}
@@ -314,12 +331,15 @@ void exit(int code)
 	if (p->parent != NULL) {
 		// Parent should `wait`
 		p->state = ZOMBIE;
+	} else {
+		// No parent, recycle PID immediately
+		freepid(p->pid);
 	}
-	// Set the `parent` of all children to NULL
+	// Reparent children to init_proc (usershell)
 	struct proc *np;
 	for (np = pool; np < &pool[NPROC]; np++) {
 		if (np->parent == p) {
-			np->parent = NULL;
+			np->parent = init_proc;
 		}
 	}
 	sched();
