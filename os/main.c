@@ -4,16 +4,34 @@
 #include "timer.h"
 #include "trap.h"
 
-void clean_bss()
+extern char stext[];
+extern char etext[];
+extern char srodata[];
+extern char erodata[];
+extern char sdata[];
+extern char edata[];
+extern char sbss[];
+extern char ebss[];
+extern char boot_stack_lower_bound[];
+extern char boot_stack_top[];
+
+void clear_bss()
 {
-	extern char s_bss[];
-	extern char e_bss[];
-	memset(s_bss, 0, e_bss - s_bss);
+	char *p;
+	for (p = sbss; p < ebss; ++p)
+		*p = 0;
 }
 
 void main()
 {
-	clean_bss();
+	clear_bss();
+	printf("[kernel] Hello, world!\n");
+	tracef("[kernel] .text [%p, %p)", stext, etext);
+	debugf("[kernel] .rodata [%p, %p)", srodata, erodata);
+	infof("[kernel] .data [%p, %p)", sdata, edata);
+	warnf("[kernel] boot_stack top=bottom=%p, lower_bound=%p",
+	      boot_stack_top, boot_stack_lower_bound);
+	errorf("[kernel] .bss [%p, %p)", sbss, ebss);
 	proc_init();
 	loader_init();
 	trap_init();

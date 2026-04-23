@@ -24,6 +24,11 @@ void loader_init()
 	app_info_ptr = (uint64 *)_app_num;
 	app_num = *app_info_ptr;
 	app_info_ptr++;
+	infof("[kernel] num_app = %d", app_num);
+	for (int i = 0; i < app_num; i++) {
+		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[1 + i],
+		      app_info_ptr[2 + i]);
+	}
 }
 
 // Load nth user app at
@@ -33,6 +38,12 @@ int load_app(int n, uint64 *info)
 	uint64 start = info[n], end = info[n + 1], length = end - start;
 	memset((void *)BASE_ADDRESS + n * MAX_APP_SIZE, 0, MAX_APP_SIZE);
 	memmove((void *)BASE_ADDRESS + n * MAX_APP_SIZE, (void *)start, length);
+	// Memory fence about fetching the instruction memory.
+	// It is guaranteed that a subsequent instruction fetch must
+	// observe all previous writes to the instruction memory.
+	// Therefore, fence.i must be executed after we have loaded
+	// the code of the next app into the instruction memory.
+	asm volatile("fence.i");
 	return length;
 }
 

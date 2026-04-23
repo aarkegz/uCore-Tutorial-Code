@@ -1,5 +1,6 @@
 #include "sbi.h"
 #include "types.h"
+
 const uint64 SBI_SET_TIMER = 0;
 const uint64 SBI_CONSOLE_PUTCHAR = 1;
 const uint64 SBI_CONSOLE_GETCHAR = 2;
@@ -15,10 +16,11 @@ int inline sbi_call(uint64 which, uint64 arg0, uint64 arg1, uint64 arg2)
 	register uint64 a0 asm("a0") = arg0;
 	register uint64 a1 asm("a1") = arg1;
 	register uint64 a2 asm("a2") = arg2;
+	register uint64 a6 asm("a6") = 0;
 	register uint64 a7 asm("a7") = which;
 	asm volatile("ecall"
 		     : "=r"(a0)
-		     : "r"(a0), "r"(a1), "r"(a2), "r"(a7)
+		     : "r"(a0), "r"(a1), "r"(a2), "r"(a6), "r"(a7)
 		     : "memory");
 	return a0;
 }
@@ -33,9 +35,41 @@ int console_getchar()
 	return sbi_call(SBI_CONSOLE_GETCHAR, 0, 0, 0);
 }
 
+// QEMU sifive_test device address
+#define VIRT_TEST 0x100000
+#define EXIT_SUCCESS 0x5555
+#define EXIT_FAILURE_FLAG 0x3333
+#define EXIT_RESET 0x7777
+
+static void exit_code(uint32 code)
+{
+	uint32 val;
+	if (code == EXIT_SUCCESS || code == EXIT_RESET) {
+		val = code;
+	} else {
+		val = (code << 16) | EXIT_FAILURE_FLAG;
+	}
+	// Write to sifive_test device to exit QEMU
+	*(volatile uint32 *)VIRT_TEST = val;
+	// In case exit didn't work, loop forever
+	while (1) {
+		asm volatile("wfi");
+	}
+}
+
 void shutdown()
 {
-	sbi_call(SBI_SHUTDOWN, 0, 0, 0);
+	exit_failure();
+}
+
+void exit_success()
+{
+	exit_code(EXIT_SUCCESS);
+}
+
+void exit_failure()
+{
+	exit_code(1);
 }
 
 void set_timer(uint64 stime)
