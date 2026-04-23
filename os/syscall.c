@@ -39,6 +39,23 @@ uint64 sys_gettimeofday(TimeVal *val, int _tz)
 /*
 * LAB1: you may need to define sys_trace here
 */
+uint64 sys_trace(int trace_request, uint64 id, uint8 data)
+{
+	struct proc *p = curr_proc();
+	switch (trace_request) {
+	case 0: // read byte at address id
+		return *(uint8 *)id;
+	case 1: // write byte data to address id
+		*(uint8 *)id = data;
+		return 0;
+	case 2: // query syscall count for syscall id
+		if (id >= 500)
+			return -1;
+		return p->syscall_count[id];
+	default:
+		return -1;
+	}
+}
 
 extern char trap_page[];
 
@@ -53,6 +70,8 @@ void syscall()
 	/*
 	* LAB1: you may need to update syscall counter here
 	*/
+	if (id >= 0 && id < 500)
+		curr_proc()->syscall_count[id]++;
 	switch (id) {
 	case SYS_write:
 		ret = sys_write(args[0], (char *)args[1], args[2]);
@@ -69,6 +88,9 @@ void syscall()
 	/*
 	* LAB1: you may need to add SYS_trace case here
 	*/
+	case SYS_trace:
+		ret = sys_trace(args[0], args[1], (uint8)args[2]);
+		break;
 	default:
 		ret = -1;
 		errorf("unknown syscall %d", id);
