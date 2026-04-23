@@ -388,6 +388,11 @@ int sys_condvar_wait(int cond_id, int mutex_id)
 }
 
 // LAB5: (2) you may need to define function enable_deadlock_detect here
+int sys_enable_deadlock_detect(int is_enable)
+{
+	debugf("sys_enable_deadlock_detect NOT IMPLEMENTED");
+	return -1;
+}
 
 // TODO: add support for mmap and munmap syscall. (LAB1)
 // hint: read through docstrings in vm.c. Watching CH4 video may also help.
@@ -578,7 +583,9 @@ void syscall()
 	case SYS_condvar_wait:
 		ret = sys_condvar_wait(args[0], args[1]);
 		break;
-	// LAB5: (2) you may need to add case SYS_enable_deadlock_detect here
+	case SYS_enable_deadlock_detect:
+		ret = sys_enable_deadlock_detect(args[0]);
+		break;
 	case SYS_unlinkat:
 		ret = sys_unlinkat(args[0], args[1], args[2]);
 		break;
