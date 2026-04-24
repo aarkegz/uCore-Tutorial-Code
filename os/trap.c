@@ -121,4 +121,3 @@ void usertrapret()
 	tracef("return to user @ %p", trapframe->epc);
 	((void (*)(uint64, uint64))fn)(TRAPFRAME, satp);
 }
-
