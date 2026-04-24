@@ -202,9 +202,9 @@ uint ialloc(ushort type)
 	struct dinode din;
 
 	bzero(&din, sizeof(din));
-	din.type = xshort(type);
+	din.type = xint(type);
+	din.nlink = xint(1);
 	din.size = xint(0);
-	// LAB4: You may want to init link count here
 	winode(inum, &din);
 	return inum;
 }
@@ -242,7 +242,8 @@ void iappend(uint inum, void *xp, int n)
 				din.addrs[fbn] = xint(freeblock++);
 			}
 			x = xint(din.addrs[fbn]);
-		} else {
+		} else if (fbn < NDIRECT + NINDIRECT) {
+			// single indirect
 			if (xint(din.addrs[NDIRECT]) == 0) {
 				din.addrs[NDIRECT] = xint(freeblock++);
 			}
@@ -253,6 +254,27 @@ void iappend(uint inum, void *xp, int n)
 				      (char *)indirect);
 			}
 			x = xint(indirect[fbn - NDIRECT]);
+		} else {
+			// double indirect
+			if (xint(din.addrs[NDIRECT + 1]) == 0) {
+				din.addrs[NDIRECT + 1] = xint(freeblock++);
+			}
+			uint idx1 = (fbn - NDIRECT - NINDIRECT) / NINDIRECT;
+			uint idx2 = (fbn - NDIRECT - NINDIRECT) % NINDIRECT;
+			rsect(xint(din.addrs[NDIRECT + 1]), (char *)indirect);
+			if (indirect[idx1] == 0) {
+				indirect[idx1] = xint(freeblock++);
+				wsect(xint(din.addrs[NDIRECT + 1]),
+				      (char *)indirect);
+			}
+			uint indirect2[NINDIRECT];
+			rsect(xint(indirect[idx1]), (char *)indirect2);
+			if (indirect2[idx2] == 0) {
+				indirect2[idx2] = xint(freeblock++);
+				wsect(xint(indirect[idx1]),
+				      (char *)indirect2);
+			}
+			x = xint(indirect2[idx2]);
 		}
 		n1 = min(n, (fbn + 1) * BSIZE - off);
 		rsect(x, buf);
