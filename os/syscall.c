@@ -40,8 +40,6 @@ uint64 sys_gettimeofday(TimeVal *val, int _tz)
 * LAB1: you may need to define sys_trace here
 */
 
-extern char trap_page[];
-
 void syscall()
 {
 	struct trapframe *trapframe = curr_proc()->trapframe;
