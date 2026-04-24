@@ -28,12 +28,20 @@ uint64 sys_read(int fd, uint64 va, uint64 len)
 		return -1;
 	struct proc *p = curr_proc();
 	char str[MAX_STR_LEN];
-	for (int i = 0; i < len; ++i) {
-		int c = consgetc();
+	int size = 0;
+	for (int i = 0; i < len && i < MAX_STR_LEN; ++i) {
+		int c;
+		do {
+			c = consgetc();
+			if (c == 0) {
+				yield();
+			}
+		} while (c == 0);
 		str[i] = c;
+		size++;
 	}
-	copyout(p->pagetable, va, str, len);
-	return len;
+	copyout(p->pagetable, va, str, size);
+	return size;
 }
 
 __attribute__((noreturn)) void sys_exit(int code)
