@@ -233,6 +233,8 @@ int fork()
 	// Cause fork to return 0 in the child.
 	np->trapframe->a0 = 0;
 	np->parent = p;
+	np->program_brk = p->program_brk;
+	np->heap_bottom = p->heap_bottom;
 	np->state = RUNNABLE;
 	add_task(np);
 	return np->pid;

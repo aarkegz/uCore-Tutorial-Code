@@ -2,7 +2,6 @@
 #define LOG_H
 
 extern void printf(char *, ...);
-extern int threadid();
 extern void dummy(int, ...);
 extern void shutdown();
 
@@ -57,7 +56,7 @@ enum LOG_COLOR {
 #if defined(USE_LOG_ERROR)
 #define errorf(fmt, ...)                                                       \
 	do {                                                                   \
-		printf("\x1b[%dm[%5s] " fmt "\x1b[0m\n", RED, "ERROR",           \
+		printf("\x1b[%dm[%s] " fmt "\x1b[0m\n", RED, "ERROR",           \
 		       ##__VA_ARGS__);                                         \
 	} while (0)
 #else
@@ -67,7 +66,7 @@ enum LOG_COLOR {
 #if defined(USE_LOG_WARN)
 #define warnf(fmt, ...)                                                        \
 	do {                                                                   \
-		printf("\x1b[%dm[%5s] " fmt "\x1b[0m\n", YELLOW, "WARN",         \
+		printf("\x1b[%dm[%s] " fmt "\x1b[0m\n", YELLOW, "WARN",         \
 		       ##__VA_ARGS__);                                         \
 	} while (0)
 #else
@@ -77,7 +76,7 @@ enum LOG_COLOR {
 #if defined(USE_LOG_INFO)
 #define infof(fmt, ...)                                                        \
 	do {                                                                   \
-		printf("\x1b[%dm[%5s] " fmt "\x1b[0m\n", BLUE, "INFO",           \
+		printf("\x1b[%dm[%s] " fmt "\x1b[0m\n", BLUE, "INFO",           \
 		       ##__VA_ARGS__);                                         \
 	} while (0)
 #else
@@ -87,7 +86,7 @@ enum LOG_COLOR {
 #if defined(USE_LOG_DEBUG)
 #define debugf(fmt, ...)                                                       \
 	do {                                                                   \
-		printf("\x1b[%dm[%5s] " fmt "\x1b[0m\n", GREEN, "DEBUG",         \
+		printf("\x1b[%dm[%s] " fmt "\x1b[0m\n", GREEN, "DEBUG",         \
 		       ##__VA_ARGS__);                                         \
 	} while (0)
 #else
@@ -97,7 +96,7 @@ enum LOG_COLOR {
 #if defined(USE_LOG_TRACE)
 #define tracef(fmt, ...)                                                       \
 	do {                                                                   \
-		printf("\x1b[%dm[%5s] " fmt "\x1b[0m\n", GRAY, "TRACE",          \
+		printf("\x1b[%dm[%s] " fmt "\x1b[0m\n", GRAY, "TRACE",          \
 		       ##__VA_ARGS__);                                         \
 	} while (0)
 #else
@@ -106,9 +105,8 @@ enum LOG_COLOR {
 
 #define panic(fmt, ...)                                                        \
 	do {                                                                   \
-		int tid = threadid();                                          \
-		printf("\x1b[%dm[%s %d] %s:%d: " fmt "\x1b[0m\n", RED,         \
-		       "PANIC", tid, __FILE__, __LINE__, ##__VA_ARGS__);       \
+		printf("\x1b[%dm[%s] %s:%d: " fmt "\x1b[0m\n", RED,             \
+		       "PANIC", __FILE__, __LINE__, ##__VA_ARGS__);             \
 		shutdown();                                                    \
 		__builtin_unreachable();                                       \
 	} while (0)
