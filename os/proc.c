@@ -210,7 +210,8 @@ void freepagetable(pagetable_t pagetable, uint64 max_page)
 {
 	uvmunmap(pagetable, TRAMPOLINE, 1, 0);
 	uvmunmap(pagetable, TRAPFRAME, 1, 0);
-	uvmfree(pagetable, max_page);
+	uvmunmap(pagetable, 0, max_page, 1);
+	freewalk_all(pagetable);
 }
 
 void freeproc(struct proc *p)
