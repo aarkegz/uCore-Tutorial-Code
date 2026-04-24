@@ -24,8 +24,8 @@ void loader_init()
 	app_info_ptr++;
 	infof("[kernel] num_app = %d", app_num);
 	for (int i = 0; i < app_num; i++) {
-		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[1 + i],
-		      app_info_ptr[2 + i]);
+		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[i * 2],
+		      app_info_ptr[i * 2 + 1]);
 	}
 }
 
@@ -55,7 +55,7 @@ pagetable_t bin_loader(uint64 start, uint64 end, struct proc *p)
 		panic("Unsupported");
 	}
 	mappages(pg, ustack_bottom_vaddr, USTACK_SIZE, (uint64)kalloc(),
-		 PTE_U | PTE_R | PTE_W | PTE_X);
+		 PTE_U | PTE_R | PTE_W);
 	p->ustack = ustack_bottom_vaddr;
 	p->trapframe->epc = BASE_ADDRESS;
 	p->trapframe->sp = p->ustack + USTACK_SIZE;
@@ -137,7 +137,7 @@ pagetable_t elf_loader(uint64 start, uint64 end, struct proc *p)
 		panic("elf_loader: kalloc stack fail");
 	memset(stack_mem, 0, PGSIZE);
 	if (mappages(pg, ustack_bottom, USTACK_SIZE, (uint64)stack_mem,
-		     PTE_U | PTE_R | PTE_W | PTE_X) != 0)
+		     PTE_U | PTE_R | PTE_W) != 0)
 		panic("elf_loader: mappages stack fail");
 
 	p->pagetable = pg;
