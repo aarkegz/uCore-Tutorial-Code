@@ -16,7 +16,7 @@ void clear_bss()
 {
 	char *p;
 	for (p = sbss; p < ebss; ++p)
-		*p = 0;
+		*(volatile char *)p = 0;
 }
 
 void main()
