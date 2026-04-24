@@ -32,6 +32,7 @@ endif
 CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
+CFLAGS += -march=rv64gc_zifencei -mabi=lp64d
 CFLAGS += -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS += -I$K
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
@@ -107,14 +108,11 @@ clean:
 
 # BOARD
 BOARD		?= qemu
-SBI			?= rustsbi
-BOOTLOADER	:= ./bootloader/rustsbi-qemu.bin
 
 QEMU = qemu-system-riscv64
 QEMUOPTS = \
 	-nographic \
 	-machine virt \
-	-bios $(BOOTLOADER) \
 	-kernel build/kernel	\
 
 run: build/kernel
