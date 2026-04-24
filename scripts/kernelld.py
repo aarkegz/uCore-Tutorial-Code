@@ -19,9 +19,6 @@ SECTIONS
     .text : {
         *(.text.entry)
         *(.text .text.*)
-        . = ALIGN(0x1000);
-        *(trampsec)
-        . = ALIGN(0x1000);
     }
 
     . = ALIGN(4K);
@@ -47,7 +44,7 @@ SECTIONS
         *(.data.*)
         *(.sdata .sdata.*)
     }
-    
+
     . = ALIGN(4K);
     edata = .;
     .bss : {
@@ -67,4 +64,3 @@ SECTIONS
 }
 ''')
     f.close()
-

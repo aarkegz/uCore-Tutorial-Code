@@ -34,4 +34,5 @@ void main()
 	trap_init();
 	loader_init();
 	run_next_app();
+	panic("Should not reach here!");
 }

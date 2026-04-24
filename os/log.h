@@ -2,7 +2,6 @@
 #define LOG_H
 
 extern void printf(char *, ...);
-extern int threadid();
 extern void dummy(int, ...);
 extern void shutdown();
 
@@ -106,11 +105,9 @@ enum LOG_COLOR {
 
 #define panic(fmt, ...)                                                        \
 	do {                                                                   \
-		int tid = threadid();                                          \
-		printf("\x1b[%dm[%s %d] %s:%d: " fmt "\x1b[0m\n", RED,         \
-		       "PANIC", tid, __FILE__, __LINE__, ##__VA_ARGS__);       \
+		printf("\x1b[%dm[%s] %s:%d: " fmt "\x1b[0m\n", RED,             \
+		       "PANIC", __FILE__, __LINE__, ##__VA_ARGS__);             \
 		shutdown();                                                    \
-
 	} while (0)
 
 #endif //! LOG_H

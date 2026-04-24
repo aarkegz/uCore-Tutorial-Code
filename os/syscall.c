@@ -2,7 +2,6 @@
 #include "defs.h"
 #include "loader.h"
 #include "syscall_ids.h"
-#include "trap.h"
 
 uint64 sys_write(int fd, char *str, uint len)
 {
@@ -19,32 +18,20 @@ __attribute__((noreturn)) void sys_exit(int code)
 {
 	debugf("sysexit(%d)", code);
 	run_next_app();
-	infof("All applications completed!");
-	exit_success();
 	__builtin_unreachable();
 }
 
-extern char trap_page[];
-
-void syscall()
+uint64 syscall(uint64 syscall_id, uint64 arg0, uint64 arg1, uint64 arg2)
 {
-	struct trapframe *trapframe = (struct trapframe *)trap_page;
-	int id = trapframe->a7, ret;
-	uint64 args[6] = { trapframe->a0, trapframe->a1, trapframe->a2,
-			   trapframe->a3, trapframe->a4, trapframe->a5 };
-	tracef("syscall %d args = [%x, %x, %x, %x, %x, %x]", id, args[0],
-	       args[1], args[2], args[3], args[4], args[5]);
-	switch (id) {
+	tracef("syscall %d args = [%x, %x, %x]", syscall_id, arg0, arg1,
+	       arg2);
+	switch (syscall_id) {
 	case SYS_write:
-		ret = sys_write(args[0], (char *)args[1], args[2]);
-		break;
+		return sys_write(arg0, (char *)arg1, arg2);
 	case SYS_exit:
-		sys_exit(args[0]);
-		// __builtin_unreachable();
+		sys_exit(arg0);
 	default:
-		ret = -1;
-		errorf("unknown syscall %d", id);
+		errorf("unknown syscall %d", syscall_id);
+		return -1;
 	}
-	trapframe->a0 = ret;
-	tracef("syscall ret %d", ret);
 }
