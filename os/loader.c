@@ -24,8 +24,8 @@ void loader_init()
 	app_info_ptr++;
 	infof("[kernel] num_app = %d", app_num);
 	for (int i = 0; i < app_num; i++) {
-		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[i * 2],
-		      app_info_ptr[i * 2 + 1]);
+		infof("[kernel] app_%d [%p, %p)", i, app_info_ptr[i],
+		      app_info_ptr[i + 1]);
 	}
 }
 
