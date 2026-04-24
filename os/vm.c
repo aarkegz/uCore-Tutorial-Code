@@ -205,6 +205,23 @@ void freewalk(pagetable_t pagetable)
 	kfree((void *)pagetable);
 }
 
+// Recursively free page-table pages and any remaining leaf mappings.
+// Used when the page table may contain mmap'd pages outside the
+// normal user range tracked by max_page.
+void freewalk_all(pagetable_t pagetable)
+{
+	for (int i = 0; i < 512; i++) {
+		pte_t pte = pagetable[i];
+		if ((pte & PTE_V) && (pte & (PTE_R | PTE_W | PTE_X)) == 0) {
+			freewalk_all((pagetable_t)PTE2PA(pte));
+		} else if (pte & PTE_V) {
+			kfree((void *)PTE2PA(pte));
+		}
+		pagetable[i] = 0;
+	}
+	kfree((void *)pagetable);
+}
+
 /**
  * @brief Free user memory pages, then free page-table pages.
  *
