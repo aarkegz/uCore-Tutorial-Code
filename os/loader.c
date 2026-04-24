@@ -56,9 +56,22 @@ pagetable_t bin_loader(uint64 start, uint64 end, struct proc *p)
 	}
 	end = PGROUNDUP(end);
 	uint64 length = end - start;
-	if (mappages(pg, BASE_ADDRESS, length, start,
-		     PTE_U | PTE_R | PTE_W | PTE_X) != 0) {
-		panic("mappages fail");
+	// Allocate new pages and copy data instead of directly mapping kernel data.
+	// This prevents kfree from freeing kernel-embedded program data on exit.
+	for (uint64 va = BASE_ADDRESS; va < BASE_ADDRESS + length;
+	     va += PGSIZE) {
+		char *mem = kalloc();
+		if (mem == 0)
+			panic("bin_loader: kalloc fail");
+		memset(mem, 0, PGSIZE);
+		uint64 offset = va - BASE_ADDRESS;
+		uint64 copy_len = PGSIZE;
+		if (offset + copy_len > length)
+			copy_len = length - offset;
+		memmove(mem, (void *)(start + offset), copy_len);
+		if (mappages(pg, va, PGSIZE, (uint64)mem,
+			     PTE_U | PTE_R | PTE_W | PTE_X) != 0)
+			panic("bin_loader: mappages fail");
 	}
 	p->pagetable = pg;
 	uint64 ustack_bottom_vaddr = BASE_ADDRESS + length + PAGE_SIZE;
