@@ -103,14 +103,11 @@ clean:
 
 # BOARD
 BOARD		?= qemu
-SBI			?= rustsbi
-BOOTLOADER	:= ./bootloader/rustsbi-qemu.bin
 
 QEMU = qemu-system-riscv64
 QEMUOPTS = \
 	-nographic \
 	-machine virt \
-	-bios $(BOOTLOADER) \
 	-kernel build/kernel	\
 
 run: build/kernel
