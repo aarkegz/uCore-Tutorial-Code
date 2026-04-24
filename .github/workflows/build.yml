@@ -1,0 +1,21 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install RISC-V toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf qemu-system-misc
+
+      - name: Build kernel
+        run: make build
+
+      - name: Run kernel
+        run: |
+          timeout 10 make run || [ $? -eq 124 ]
