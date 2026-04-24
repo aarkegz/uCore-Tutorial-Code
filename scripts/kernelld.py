@@ -7,7 +7,7 @@ if __name__ == '__main__':
     apps = os.listdir(TARGET_DIR)
     f.write(
 '''OUTPUT_ARCH(riscv)
-ENTRY(_entry)
+ENTRY(_start)
 BASE_ADDRESS = 0x80200000;
 
 SECTIONS
@@ -15,25 +15,23 @@ SECTIONS
     . = BASE_ADDRESS;
     skernel = .;
 
-    s_text = .;
+    stext = .;
     .text : {
         *(.text.entry)
         *(.text .text.*)
-        . = ALIGN(0x1000);
-        *(trampsec)
-        . = ALIGN(0x1000);
     }
 
     . = ALIGN(4K);
-    e_text = .;
-    s_rodata = .;
+    etext = .;
+    srodata = .;
     .rodata : {
         *(.rodata .rodata.*)
+        *(.srodata .srodata.*)
     }
 
     . = ALIGN(4K);
-    e_rodata = .;
-    s_data = .;
+    erodata = .;
+    sdata = .;
     .data : {
         *(.data)
 ''')
@@ -46,18 +44,18 @@ SECTIONS
         *(.data.*)
         *(.sdata .sdata.*)
     }
-    
+
     . = ALIGN(4K);
-    e_data = .;
+    edata = .;
     .bss : {
         *(.bss.stack)
-        s_bss = .;
+        sbss = .;
         *(.bss .bss.*)
         *(.sbss .sbss.*)
     }
 
     . = ALIGN(4K);
-    e_bss = .;
+    ebss = .;
     ekernel = .;
 
     /DISCARD/ : {
@@ -66,4 +64,3 @@ SECTIONS
 }
 ''')
     f.close()
-

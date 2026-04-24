@@ -75,8 +75,6 @@ uint64 sys_trace(uint64 trace_request, uint64 id, uint64 data)
 	return -1;
 }
 
-extern char trap_page[];
-
 void syscall()
 {
 	struct trapframe *trapframe = curr_proc()->trapframe;
@@ -117,9 +115,9 @@ void syscall()
 		ret = sys_trace(args[0], args[1], args[2]);
 		break;
 	default:
-		ret = -1;
 		errorf("unknown syscall %d", id);
+		ret = -1;
+		break;
 	}
 	trapframe->a0 = ret;
-	tracef("syscall ret %d", ret);
 }
