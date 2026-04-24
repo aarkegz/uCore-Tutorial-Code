@@ -70,9 +70,9 @@ void syscall()
 	* LAB1: you may need to add SYS_trace case here
 	*/
 	default:
-		ret = -1;
 		errorf("unknown syscall %d", id);
+		ret = -1;
+		break;
 	}
 	trapframe->a0 = ret;
-	tracef("syscall ret %d", ret);
 }

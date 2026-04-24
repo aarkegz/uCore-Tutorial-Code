@@ -38,6 +38,12 @@ int load_app(int n, uint64 *info)
 	uint64 start = info[n], end = info[n + 1], length = end - start;
 	memset((void *)BASE_ADDRESS + n * MAX_APP_SIZE, 0, MAX_APP_SIZE);
 	memmove((void *)BASE_ADDRESS + n * MAX_APP_SIZE, (void *)start, length);
+	// Memory fence about fetching the instruction memory.
+	// It is guaranteed that a subsequent instruction fetch must
+	// observe all previous writes to the instruction memory.
+	// Therefore, fence.i must be executed after we have loaded
+	// the code of all apps into the instruction memory.
+	asm volatile("fence.i");
 	return length;
 }
 
@@ -57,11 +63,5 @@ int run_all_app()
 		* LAB1: you may need to initialize your new fields of proc here
 		*/
 	}
-	// Memory fence about fetching the instruction memory.
-	// It is guaranteed that a subsequent instruction fetch must
-	// observe all previous writes to the instruction memory.
-	// Therefore, fence.i must be executed after we have loaded
-	// the code of all apps into the instruction memory.
-	asm volatile("fence.i");
 	return 0;
 }
