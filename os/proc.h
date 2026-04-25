@@ -74,9 +74,12 @@ struct proc {
 	int killed; /* Whether the task has been killed */
 	int frozen; /* Whether the task is frozen by signal */
 	struct trapframe *trap_ctx_backup; /* Backup trap context for signal handling */
-	// LAB5: (1) Define your variables for deadlock detect here.
-	//			 You may need a flag to record if detection enabled,
-	//       and some arrays for detection algorithm.
+	// Deadlock detection
+	int deadlock_detect_enabled;
+	int mutex_available[LOCK_POOL_SIZE];
+	int mutex_allocation[NTHREAD][LOCK_POOL_SIZE];
+	int sem_available[LOCK_POOL_SIZE];
+	int sem_allocation[NTHREAD][LOCK_POOL_SIZE];
 };
 
 int cpuid();

@@ -45,7 +45,7 @@ int bin_loader(struct inode *ip, struct proc *p)
 // adds a guard page before the user stack.
 pagetable_t elf_loader(uint64 start, uint64 end, struct proc *p)
 {
-	pagetable_t pg = uvmcreate((uint64)p->trapframe);
+	pagetable_t pg = uvmcreate();
 
 	Elf64_Ehdr *ehdr = (Elf64_Ehdr *)start;
 	if (ehdr->e_machine != EM_RISCV) {
@@ -112,9 +112,9 @@ pagetable_t elf_loader(uint64 start, uint64 end, struct proc *p)
 		panic("elf_loader: mappages stack fail");
 
 	p->pagetable = pg;
-	p->ustack = ustack_bottom;
-	p->trapframe->epc = ehdr->e_entry;
-	p->trapframe->sp = ustack_top;
+	p->ustack_base = ustack_bottom;
+	p->threads[0].trapframe->epc = ehdr->e_entry;
+	p->threads[0].trapframe->sp = ustack_top;
 	p->max_page = PGROUNDUP(ustack_top - 1) / PAGE_SIZE;
 	p->program_brk = ustack_top;
 	p->heap_bottom = ustack_top;

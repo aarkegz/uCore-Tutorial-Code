@@ -54,6 +54,7 @@ static void call_kernel_signal_handler(uint32 signal)
 static void call_user_signal_handler(int sig, uint32 signal)
 {
 	struct proc *p = curr_proc();
+	struct trapframe *tf = curr_thread()->trapframe;
 	uint64 handler = p->signal_actions.table[sig].handler;
 	if (handler != 0) {
 		/* User handler */
@@ -66,13 +67,13 @@ static void call_user_signal_handler(int sig, uint32 signal)
 				(struct trapframe *)kalloc();
 		}
 		if (p->trap_ctx_backup) {
-			*p->trap_ctx_backup = *p->trapframe;
+			*p->trap_ctx_backup = *tf;
 		}
 
 		/* Modify trapframe to jump to handler */
-		p->trapframe->epc = handler;
+		tf->epc = handler;
 		/* Pass signal number as argument (a0) */
-		p->trapframe->a0 = sig;
+		tf->a0 = sig;
 	}
 }
 
