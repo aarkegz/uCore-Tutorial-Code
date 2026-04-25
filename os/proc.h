@@ -74,12 +74,6 @@ struct proc {
 	int killed; /* Whether the task has been killed */
 	int frozen; /* Whether the task is frozen by signal */
 	struct trapframe *trap_ctx_backup; /* Backup trap context for signal handling */
-	// Deadlock detection
-	int deadlock_detect_enabled;
-	int mutex_available[LOCK_POOL_SIZE];
-	int mutex_allocation[NTHREAD][LOCK_POOL_SIZE];
-	int sem_available[LOCK_POOL_SIZE];
-	int sem_allocation[NTHREAD][LOCK_POOL_SIZE];
 };
 
 int cpuid();

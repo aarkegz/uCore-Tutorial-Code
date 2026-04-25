@@ -167,12 +167,6 @@ found:
 	p->killed = 0;
 	p->frozen = 0;
 	p->trap_ctx_backup = NULL;
-	// Deadlock detection
-	p->deadlock_detect_enabled = 0;
-	memset(p->mutex_available, 0, sizeof(p->mutex_available));
-	memset(p->mutex_allocation, 0, sizeof(p->mutex_allocation));
-	memset(p->sem_available, 0, sizeof(p->sem_available));
-	memset(p->sem_allocation, 0, sizeof(p->sem_allocation));
 	return p;
 }
 
