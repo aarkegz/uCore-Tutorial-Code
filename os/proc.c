@@ -370,6 +370,8 @@ int fork()
 	}
 
 	np->parent = p;
+	np->program_brk = p->program_brk;
+	np->heap_bottom = p->heap_bottom;
 	/* Inherit signal_mask and signal_actions */
 	np->signal_mask = p->signal_mask;
 	np->signal_actions = p->signal_actions;
@@ -507,7 +509,6 @@ void exit(int code)
 				np->parent = init_proc;
 			}
 		}
-		}
 	}
 	sched();
 }
@@ -549,11 +550,27 @@ int growproc(int n)
 		return -1;
 	}
 	if (n > 0) {
-		if ((program_brk = uvmalloc(p->pagetable, program_brk, program_brk + n, PTE_W)) == 0) {
-			return -1;
+		uint64 va;
+		for (va = PGROUNDUP(program_brk); va < program_brk + n;
+		     va += PGSIZE) {
+			char *mem = kalloc();
+			if (mem == 0)
+				return -1;
+			memset(mem, 0, PGSIZE);
+			if (mappages(p->pagetable, va, PGSIZE, (uint64)mem,
+				     PTE_U | PTE_R | PTE_W) != 0) {
+				kfree(mem);
+				return -1;
+			}
 		}
+		program_brk += n;
 	} else if (n < 0) {
-		program_brk = uvmdealloc(p->pagetable, program_brk, program_brk + n);
+		uvmunmap(p->pagetable, PGROUNDUP(program_brk + n),
+			 (PGROUNDUP(program_brk) -
+			  PGROUNDUP(program_brk + n)) /
+				 PGSIZE,
+			 1);
+		program_brk += n;
 	}
 	p->program_brk = program_brk;
 	return 0;

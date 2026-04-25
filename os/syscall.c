@@ -24,13 +24,20 @@ uint64 console_read(uint64 va, uint64 len)
 {
 	struct proc *p = curr_proc();
 	char str[MAX_STR_LEN];
-	tracef("read size = %d", len);
-	for (int i = 0; i < len; ++i) {
-		int c = consgetc();
+	int size = 0;
+	for (int i = 0; i < len && i < MAX_STR_LEN; ++i) {
+		int c;
+		do {
+			c = consgetc();
+			if (c == 0) {
+				yield();
+			}
+		} while (c == 0);
 		str[i] = c;
+		size++;
 	}
-	copyout(p->pagetable, va, str, len);
-	return len;
+	copyout(p->pagetable, va, str, size);
+	return size;
 }
 
 uint64 sys_write(int fd, uint64 va, uint64 len)
@@ -154,11 +161,10 @@ uint64 sys_pipe(uint64 fdarray)
 	struct proc *p = curr_proc();
 	uint64 fd0, fd1;
 	struct file *f0, *f1;
-	if (f0 < 0 || f1 < 0) {
-		return -1;
-	}
 	f0 = filealloc();
 	f1 = filealloc();
+	if (f0 == 0 || f1 == 0)
+		goto err0;
 	if (pipealloc(f0, f1) < 0)
 		goto err0;
 	fd0 = fdalloc(f0);
@@ -176,9 +182,11 @@ err1:
 	p->files[fd0] = 0;
 	p->files[fd1] = 0;
 err0:
-	fileclose(f0);
-	fileclose(f1);
-	return -1;
+		if (f0)
+			fileclose(f0);
+		if (f1)
+			fileclose(f1);
+		return -1;
 }
 
 uint64 sys_dup(int fd)
@@ -743,13 +751,14 @@ uint64 sys_sigprocmask(uint32 mask)
 uint64 sys_sigreturn(void)
 {
 	struct proc *p = curr_proc();
+	struct trapframe *tf = curr_thread()->trapframe;
 	p->handling_sig = -1;
 	/* Restore the trap context from backup */
 	if (p->trap_ctx_backup) {
-		*p->trapframe = *p->trap_ctx_backup;
+		*tf = *p->trap_ctx_backup;
 	}
 	/* Return the value of a0 in the trap context */
-	return p->trapframe->a0;
+	return tf->a0;
 }
 
 static int check_sigaction_error(uint32 signal, uint64 action, uint64 old_action)
@@ -781,6 +790,34 @@ uint64 sys_sigaction(int signum, uint64 action, uint64 old_action)
 	       sizeof(struct SignalAction));
 	p->signal_actions.table[signum] = new_action;
 	return 0;
+}
+uint64 sys_fstat(int fd, uint64 st)
+{
+	// TODO: implement sys_fstat
+	return -1;
+}
+
+int sys_unlinkat(int fd, uint64 path, uint flags)
+{
+	// TODO: implement sys_unlinkat
+	return -1;
+}
+
+uint64 sys_spawn(uint64 path)
+{
+	// TODO: implement sys_spawn
+	return -1;
+}
+
+uint64 sys_set_priority(int prio)
+{
+	// TODO: implement sys_set_priority
+	return -1;
+}
+
+uint64 sys_sbrk(int n)
+{
+	return growproc(n);
 }
 
 void syscall()
@@ -904,7 +941,7 @@ void syscall()
 	case SYS_setpriority:
 		ret = sys_set_priority(args[0]);
 		break;
-	case SYS_sbrk:
+	case SYS_brk:
 		ret = sys_sbrk(args[0]);
 		break;
 	case SYS_mmap:
@@ -920,8 +957,9 @@ void syscall()
 		ret = sys_trace(args[0], args[1], args[2]);
 		break;
 	default:
-		ret = -1;
 		errorf("unknown syscall %d", id);
+		ret = -1;
+		break;
 	}
 	curr_thread()->trapframe->a0 = ret;
 	if (id != SYS_write && id != SYS_read && id != SYS_sched_yield) {
