@@ -10,8 +10,8 @@
 
 // Stat structure for sys_fstat
 #define STAT_MODE_NULL 0
-#define STAT_MODE_DIR  0o040000
-#define STAT_MODE_FILE 0o100000
+#define STAT_MODE_DIR  0x040000
+#define STAT_MODE_FILE 0x100000
 
 struct Stat {
 	uint64 dev;   // device ID

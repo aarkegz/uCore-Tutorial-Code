@@ -153,28 +153,23 @@ uint64 sys_wait(int pid, uint64 va)
 uint64 sys_spawn(uint64 va)
 {
 	struct proc *p = curr_proc();
-	char name[200];
-	copyinstr(p->pagetable, name, va, 200);
+	char name[MAX_STR_LEN];
+	copyinstr(p->pagetable, name, va, MAX_STR_LEN);
 
-	int id = get_id_by_name(name);
-	if (id < 0)
+	struct inode *ip = namei(name);
+	if (ip == 0)
 		return -1;
 
 	struct proc *np = allocproc();
-	if (np == 0)
+	if (np == 0) {
+		iput(ip);
 		return -1;
+	}
 
-	// Free the stub page table created by allocproc since loader will
-	// create its own.  Only TRAMPOLINE and TRAPFRAME are mapped (no user
-	// pages), so uvmunmap with do_free=0 then freewalk is sufficient.
-	uvmunmap(np->pagetable, TRAMPOLINE, 1, 0);
-	uvmunmap(np->pagetable, TRAPFRAME, 1, 0);
-	freewalk_all(np->pagetable);
-	np->pagetable = 0;
-
-	loader(id, np);
+	init_stdio(np);
+	bin_loader(ip, np);
+	iput(ip);
 	np->parent = p;
-	np->state = RUNNABLE;
 	add_task(np);
 	return np->pid;
 }
