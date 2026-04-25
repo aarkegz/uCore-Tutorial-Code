@@ -114,6 +114,7 @@ struct inode *ialloc(uint dev, short type)
 		if (dip->type == 0) { // a free inode
 			memset(dip, 0, sizeof(*dip));
 			dip->type = type;
+			dip->nlink = 0;
 			bwrite(bp);
 			brelse(bp);
 			return iget(dev, inum);
@@ -135,8 +136,8 @@ void iupdate(struct inode *ip)
 	bp = bread(ip->dev, IBLOCK(ip->inum, sb));
 	dip = (struct dinode *)bp->data + ip->inum % IPB;
 	dip->type = ip->type;
+	dip->nlink = ip->nlink;
 	dip->size = ip->size;
-	// LAB4: you may need to update link count here
 	memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
 	bwrite(bp);
 	brelse(bp);
@@ -188,8 +189,8 @@ void ivalid(struct inode *ip)
 		bp = bread(ip->dev, IBLOCK(ip->inum, sb));
 		dip = (struct dinode *)bp->data + ip->inum % IPB;
 		ip->type = dip->type;
+		ip->nlink = dip->nlink;
 		ip->size = dip->size;
-		// LAB4: You may need to get lint count here
 		memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
 		brelse(bp);
 		ip->valid = 1;
@@ -207,8 +208,8 @@ void ivalid(struct inode *ip)
 // case it has to free the inode.
 void iput(struct inode *ip)
 {
-	// LAB4: Unmark the condition and change link count variable name (nlink) if needed
-	if (ip->ref == 1 && ip->valid && 0 /*&& ip->nlink == 0*/) {
+	// LAB4: Enable the nlink check below when implementing unlinkat
+	if (ip->ref == 1 && ip->valid && 0 /* && ip->nlink == 0 */) {
 		// inode has no links and no other references: truncate and free.
 		itrunc(ip);
 		ip->type = 0;
@@ -252,6 +253,28 @@ static uint bmap(struct inode *ip, uint bn)
 		brelse(bp);
 		return addr;
 	}
+	bn -= NINDIRECT;
+
+	if (bn < NDINDIRECT) {
+		// Load double indirect block, allocating if necessary.
+		if ((addr = ip->addrs[NDIRECT + 1]) == 0)
+			ip->addrs[NDIRECT + 1] = addr = balloc(ip->dev);
+		bp = bread(ip->dev, addr);
+		a = (uint *)bp->data;
+		if ((addr = a[bn / NINDIRECT]) == 0) {
+			a[bn / NINDIRECT] = addr = balloc(ip->dev);
+			bwrite(bp);
+		}
+		brelse(bp);
+		bp = bread(ip->dev, addr);
+		a = (uint *)bp->data;
+		if ((addr = a[bn % NINDIRECT]) == 0) {
+			a[bn % NINDIRECT] = addr = balloc(ip->dev);
+			bwrite(bp);
+		}
+		brelse(bp);
+		return addr;
+	}
 
 	panic("bmap: out of range");
 	return 0;
@@ -281,6 +304,26 @@ void itrunc(struct inode *ip)
 		brelse(bp);
 		bfree(ip->dev, ip->addrs[NDIRECT]);
 		ip->addrs[NDIRECT] = 0;
+	}
+
+	if (ip->addrs[NDIRECT + 1]) {
+		bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
+		a = (uint *)bp->data;
+		for (i = 0; i < NINDIRECT; i++) {
+			if (a[i]) {
+				struct buf *bp2 = bread(ip->dev, a[i]);
+				uint *a2 = (uint *)bp2->data;
+				for (j = 0; j < NINDIRECT; j++) {
+					if (a2[j])
+						bfree(ip->dev, a2[j]);
+				}
+				brelse(bp2);
+				bfree(ip->dev, a[i]);
+			}
+		}
+		brelse(bp);
+		bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+		ip->addrs[NDIRECT + 1] = 0;
 	}
 
 	ip->size = 0;

@@ -33,21 +33,22 @@ struct superblock {
 
 #define FSMAGIC 0x10203040
 
-#define NDIRECT 12
+#define NDIRECT 26
 #define NINDIRECT (BSIZE / sizeof(uint))
-#define MAXFILE (NDIRECT + NINDIRECT)
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE (NDIRECT + NINDIRECT + NDINDIRECT)
 
 // File type
 #define T_DIR 1 // Directory
 #define T_FILE 2 // File
 
-// LAB4: Keep it the same as dinode in os/fs.h after you change it
-// On-disk inode structure
+// On-disk inode structure (must match os/fs.h struct dinode)
 struct dinode {
-	short type; // File type
-	short pad[3];
-	uint size; // Size of file (bytes)
-	uint addrs[NDIRECT + 1]; // Data block addresses
+	int type;                     // File type
+	int nlink;                    // Number of links to dinode in file system
+	uint size;                    // Size of file (bytes)
+	uint addrs[NDIRECT + 2];     // Data block addresses
+	uint _reserved;               // Reserved
 };
 
 // Inodes per block.

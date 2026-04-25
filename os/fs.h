@@ -33,9 +33,10 @@ struct superblock {
 
 #define FSMAGIC 0x10203040
 
-#define NDIRECT 12
+#define NDIRECT 26
 #define NINDIRECT (BSIZE / sizeof(uint))
-#define MAXFILE (NDIRECT + NINDIRECT)
+#define NDINDIRECT (NINDIRECT * NINDIRECT)
+#define MAXFILE (NDIRECT + NINDIRECT + NDINDIRECT)
 
 // File type
 #define T_DIR 1 // Directory
@@ -43,13 +44,14 @@ struct superblock {
 
 // On-disk inode structure
 struct dinode {
-	short type; // File type
-	short pad[3];
-	// LAB4: you can reduce size of pad array and add link count below,
-	//       or you can just regard a pad as link count.
-	//       But keep in mind that you'd better keep sizeof(dinode) unchanged
-	uint size; // Size of file (bytes)
-	uint addrs[NDIRECT + 1]; // Data block addresses
+	int type;                     // File type
+	int nlink;                    // Number of links to dinode in file system
+	uint size;                    // Size of file (bytes)
+	uint addrs[NDIRECT + 2];     // Data block addresses
+	// addrs[0..NDIRECT-1]: direct blocks
+	// addrs[NDIRECT]: single indirect block
+	// addrs[NDIRECT+1]: double indirect block
+	uint _reserved;               // Reserved, keep sizeof(dinode)=128
 };
 
 // Inodes per block.
