@@ -208,8 +208,7 @@ void ivalid(struct inode *ip)
 // case it has to free the inode.
 void iput(struct inode *ip)
 {
-	// LAB4: Enable the nlink check below when implementing unlinkat
-	if (ip->ref == 1 && ip->valid && 0 /* && ip->nlink == 0 */) {
+	if (ip->ref == 1 && ip->valid && ip->nlink == 0) {
 		// inode has no links and no other references: truncate and free.
 		itrunc(ip);
 		ip->type = 0;

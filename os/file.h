@@ -10,8 +10,8 @@
 
 /* File mode (matches rCore's StatMode) */
 #define STAT_MODE_NULL 0
-#define STAT_MODE_DIR  0040000
-#define STAT_MODE_FILE 0100000
+#define STAT_MODE_DIR  0x040000
+#define STAT_MODE_FILE 0x100000
 
 /* File status structure (matches rCore's Stat) */
 struct Stat {

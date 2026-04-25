@@ -189,6 +189,30 @@ err0:
 		return -1;
 }
 
+uint64 sys_spawn(uint64 va)
+{
+	struct proc *p = curr_proc();
+	char name[MAX_STR_LEN];
+	copyinstr(p->pagetable, name, va, MAX_STR_LEN);
+
+	struct inode *ip = namei(name);
+	if (ip == 0)
+		return -1;
+
+	struct proc *np = allocproc();
+	if (np == 0) {
+		iput(ip);
+		return -1;
+	}
+
+	init_stdio(np);
+	bin_loader(ip, np);
+	iput(ip);
+	np->parent = p;
+	add_task(np);
+	return np->pid;
+}
+
 uint64 sys_dup(int fd)
 {
 	if (fd < 0 || fd >= FD_BUFFER_SIZE)
@@ -800,12 +824,6 @@ uint64 sys_fstat(int fd, uint64 st)
 int sys_unlinkat(int fd, uint64 path, uint flags)
 {
 	// TODO: implement sys_unlinkat
-	return -1;
-}
-
-uint64 sys_spawn(uint64 path)
-{
-	// TODO: implement sys_spawn
 	return -1;
 }
 
