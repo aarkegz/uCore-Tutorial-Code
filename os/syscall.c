@@ -209,7 +209,9 @@ uint64 sys_spawn(uint64 va)
 	bin_loader(ip, np);
 	iput(ip);
 	np->parent = p;
-	add_task(np);
+	struct thread *nt = &np->threads[0];
+	nt->state = RUNNABLE;
+	add_task(nt);
 	return np->pid;
 }
 
@@ -815,27 +817,15 @@ uint64 sys_sigaction(int signum, uint64 action, uint64 old_action)
 	p->signal_actions.table[signum] = new_action;
 	return 0;
 }
-uint64 sys_fstat(int fd, uint64 st)
-{
-	// TODO: implement sys_fstat
-	return -1;
-}
-
-int sys_unlinkat(int fd, uint64 path, uint flags)
-{
-	// TODO: implement sys_unlinkat
-	return -1;
-}
 
 uint64 sys_set_priority(int prio)
 {
-	// TODO: implement sys_set_priority
-	return -1;
-}
-
-uint64 sys_sbrk(int n)
-{
-	return growproc(n);
+	if (prio <= 0)
+		return -1;
+	struct proc *p = curr_proc();
+	p->priority = prio;
+	p->stride = 0;
+	return prio;
 }
 
 void syscall()
