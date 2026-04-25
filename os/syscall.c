@@ -23,13 +23,20 @@ uint64 console_read(uint64 va, uint64 len)
 {
 	struct proc *p = curr_proc();
 	char str[MAX_STR_LEN];
-	tracef("read size = %d", len);
-	for (int i = 0; i < len; ++i) {
-		int c = consgetc();
+	int size = 0;
+	for (int i = 0; i < len && i < MAX_STR_LEN; ++i) {
+		int c;
+		do {
+			c = consgetc();
+			if (c == 0) {
+				yield();
+			}
+		} while (c == 0);
 		str[i] = c;
+		size++;
 	}
-	copyout(p->pagetable, va, str, len);
-	return len;
+	copyout(p->pagetable, va, str, size);
+	return size;
 }
 
 uint64 sys_write(int fd, uint64 va, uint64 len)
@@ -362,7 +369,6 @@ uint64 sys_sigaction(int signum, uint64 action, uint64 old_action)
 	p->signal_actions.table[signum] = new_action;
 	return 0;
 }
-
 void syscall()
 {
 	struct trapframe *trapframe = curr_proc()->trapframe;
@@ -457,9 +463,9 @@ void syscall()
 		ret = sys_trace(args[0], args[1], args[2]);
 		break;
 	default:
-		ret = -1;
 		errorf("unknown syscall %d", id);
+		ret = -1;
+		break;
 	}
 	trapframe->a0 = ret;
-	tracef("syscall ret %d", ret);
 }

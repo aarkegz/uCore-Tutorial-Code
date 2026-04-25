@@ -245,6 +245,8 @@ int fork()
 	// Cause fork to return 0 in the child.
 	np->trapframe->a0 = 0;
 	np->parent = p;
+	np->program_brk = p->program_brk;
+	np->heap_bottom = p->heap_bottom;
 	/* Inherit signal_mask and signal_actions */
 	np->signal_mask = p->signal_mask;
 	np->signal_actions = p->signal_actions;

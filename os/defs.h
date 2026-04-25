@@ -2,6 +2,7 @@
 #define DEFS_H
 
 #include "const.h"
+#include "elf.h"
 #include "file.h"
 #include "kalloc.h"
 #include "log.h"

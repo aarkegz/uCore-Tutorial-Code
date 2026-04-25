@@ -28,10 +28,10 @@ struct inode {
 	uint inum; // Inode number
 	int ref; // Reference count
 	int valid; // inode has been read from disk?
-	short type; // copy of disk inode
+	int type; // copy of disk inode
+	int nlink; // Number of links to this inode
 	uint size;
-	uint addrs[NDIRECT + 1];
-	// LAB4: You may need to add link count here
+	uint addrs[NDIRECT + 2]; // direct + indirect + double-indirect
 };
 
 //a struct for pipe
